@@ -75,6 +75,8 @@ func getColor(log Log) *colors.Color {
 		color = colors.White()
 	case railway.SEVERITY_ERROR:
 		color = colors.Red()
+	default:
+		color = colors.Black()
 	}
 
 	return color
