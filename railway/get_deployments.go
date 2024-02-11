@@ -36,7 +36,7 @@ func GetDeployments(ctx context.Context, client graphql.GraphQLClient) (Deployme
 		}
 		`,
 		os.Getenv("RAILWAY_PROJECT_ID"),
-		os.Getenv("RAILWAY_SERVICE_ID"),
+		os.Getenv("TRAIN"),
 	)
 
 	deploymentsResponse := DeploymentsResponse{}
