@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"slices"
 	"strconv"
 	"time"
 
@@ -78,36 +79,46 @@ func main() {
 
 				lastLog := len(logs.Data.DeploymentLogs) - 1
 
-				if logs.Data.DeploymentLogs[lastLog].Timestamp == lastTimestamp {
-					continue
-				}
-
-				switch os.Getenv("LOGS_FILTER") {
-				case "ALL":
-					break
-				case "ERROR":
-					if logs.Data.DeploymentLogs[lastLog].Severity != railway.SEVERITY_ERROR {
-						continue
-					}
-				case "INFO":
-					if logs.Data.DeploymentLogs[lastLog].Severity != railway.SEVERITY_INFO {
-						continue
-					}
-				}
-
-				err = webhook.SendDiscordWebhook(webhook.Log{
-					Message:  logs.Data.DeploymentLogs[lastLog].Message,
-					Severity: logs.Data.DeploymentLogs[lastLog].Severity,
-					Embed:    true,
+				lastAcknowledgedLog := slices.IndexFunc(logs.Data.DeploymentLogs, func(i railway.RailwayLog) bool {
+					return lastTimestamp == i.Timestamp
 				})
 
-				if err != nil {
-					fmt.Println(err)
+				slicedLogs := logs.Data.DeploymentLogs
 
-					continue
+				if lastAcknowledgedLog < 0 {
+					slicedLogs = []railway.RailwayLog{slicedLogs[lastLog]}
+				} else {
+					slicedLogs = slicedLogs[lastAcknowledgedLog+1:]
 				}
 
-				lastTimestamp = logs.Data.DeploymentLogs[lastLog].Timestamp
+				for _, log := range slicedLogs {
+					switch os.Getenv("LOGS_FILTER") {
+					case "ALL":
+						break
+					case "ERROR":
+						if log.Severity != railway.SEVERITY_ERROR {
+							continue
+						}
+					case "INFO":
+						if log.Severity != railway.SEVERITY_INFO {
+							continue
+						}
+					}
+
+					err = webhook.SendDiscordWebhook(webhook.Log{
+						Message:  log.Message,
+						Severity: log.Severity,
+						Embed:    true,
+					})
+
+					if err != nil {
+						fmt.Println(err)
+
+						continue
+					}
+
+					lastTimestamp = log.Timestamp
+				}
 			}
 		}
 	}()

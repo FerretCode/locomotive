@@ -20,12 +20,14 @@ const (
 
 type LogsResponse struct {
 	Data struct {
-		DeploymentLogs []struct {
-			Message   string `json:"message"`
-			Severity  string `json:"severity"`
-			Timestamp string `json:"timestamp"`
-		} `json:"deploymentLogs"`
+		DeploymentLogs []RailwayLog `json:"deploymentLogs"`
 	} `json:"data"`
+}
+
+type RailwayLog struct {
+	Message   string `json:"message"`
+	Severity  string `json:"severity"`
+	Timestamp string `json:"timestamp"`
 }
 
 func GetLogs(ctx context.Context, client graphql.GraphQLClient, deploymentId string) (LogsResponse, error) {
