@@ -17,10 +17,14 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
+	_, err := os.Stat(".env")
 
-	if err != nil {
-		log.Fatal(err)
+	if err == nil {
+		err := godotenv.Load()
+
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	done := make(chan os.Signal)
