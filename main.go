@@ -72,6 +72,10 @@ func main() {
 					continue
 				}
 
+				if len(logs.Data.DeploymentLogs) == 0 {
+					continue
+				}
+
 				lastLog := len(logs.Data.DeploymentLogs) - 1
 
 				if logs.Data.DeploymentLogs[lastLog].Timestamp == lastTimestamp {
