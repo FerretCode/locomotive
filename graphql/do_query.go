@@ -9,7 +9,14 @@ import (
 )
 
 type GraphQLClient struct {
+	BaseSubscriptionURL string
 	BaseURL string
+}
+
+type Log struct {
+	Message  string
+	Severity string
+	Embed    bool
 }
 
 type GraphQLRequest struct {

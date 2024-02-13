@@ -9,13 +9,15 @@ import (
 
 const (
 	ALL   = "all"
-	ERROR = "error"
+	ERROR = "err"
+	WARN = "warn"
 	INFO  = "info"
 )
 
 const (
 	SEVERITY_INFO  = "info"
-	SEVERITY_ERROR = "error"
+	SEVERITY_ERROR = "err"
+	SEVERITY_WARN = "warn"
 )
 
 type LogsResponse struct {
