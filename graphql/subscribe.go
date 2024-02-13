@@ -21,8 +21,14 @@ type SubscriptionLogResponse struct {
 		Severity  string            `json:"severity"`
 		Tags      map[string]string `json:"tags"`
 		Timestamp string            `json:"timestamp"`
+    Attributes []Attribute `json:"attributes"`
 	} `json:"environmentLogs"`
 }
+
+type Attribute struct{
+    Key string `json:"key"`
+    Value string `json:"value"`
+  }
 
 func (t *authedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Set("Authorization", "Bearer "+t.token)

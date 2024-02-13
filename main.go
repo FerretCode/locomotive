@@ -60,16 +60,19 @@ func main() {
 				for _, log := range logs.EnvironmentLogs {
 					if os.Getenv("LOGS_FILTER") != "" &&
 						os.Getenv("LOGS_FILTER") != "all" &&
-						!slices.Contains(filters, log.Severity) {
+						!slices.Contains(filters, strings.ToLower(log.Severity)) {
 						continue
 					}
 
+          graphQlLog := graphql.Log{
+            Message:  log.Message,
+            Severity: log.Severity,
+            Attributes: log.Attributes,
+            Embed:    true,
+          }
+
 					if os.Getenv("DISCORD_WEBHOOK_URL") != "" {
-						err = webhook.SendDiscordWebhook(graphql.Log{
-							Message:  log.Message,
-							Severity: log.Severity,
-							Embed:    true,
-						})
+						err = webhook.SendDiscordWebhook(graphQlLog)
 
 						if err != nil {
 							fmt.Println(err)
@@ -79,11 +82,7 @@ func main() {
 					}
 
 					if os.Getenv("INGEST_URL") != "" {
-						err = webhook.SendGenericWebhook(graphql.Log{
-							Message:  log.Message,
-							Severity: log.Severity,
-							Embed:    true,
-						})
+						err = webhook.SendGenericWebhook(graphQlLog)
 
 						if err != nil {
 							fmt.Println(err)

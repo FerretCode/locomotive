@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -14,15 +13,27 @@ import (
 )
 
 func SendGenericWebhook(log graphql.Log) error {
-	fmt.Println(log)
+  if log.Message != "" && len(log.Attributes) > 0 {
+    message := make(map[string]interface{})
+
+    for _, attr := range log.Attributes {
+      message[attr.Key] = attr.Value
+    }
+
+    bytes, err := json.Marshal(message)
+
+    if err != nil {
+      return err
+    }
+
+    log.Message = string(bytes)
+  }
 
 	data, err := json.Marshal(log)
 
 	if err != nil {
 		return nil
 	}
-
-	fmt.Println(string(data))
 
 	req, err := http.NewRequest(
 		"POST",

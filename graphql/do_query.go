@@ -16,6 +16,7 @@ type GraphQLClient struct {
 type Log struct {
 	Message  string
 	Severity string
+  Attributes []Attribute
 	Embed    bool
 }
 
