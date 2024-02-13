@@ -53,27 +53,43 @@ func main() {
 			case <-done:
 				return
 			case logs := <-newLog:
-				if len(logs.Data.EnvironmentLogs) == 0 {
+				if len(logs.EnvironmentLogs) == 0 {
 					continue
 				}
 
-				for _, log := range logs.Data.EnvironmentLogs {
+				for _, log := range logs.EnvironmentLogs {
 					if os.Getenv("LOGS_FILTER") != "" &&
 						os.Getenv("LOGS_FILTER") != "all" &&
-						slices.Index(filters, log.Severity) < 0 {
+						!slices.Contains(filters, log.Severity) {
 						continue
 					}
 
-					err = webhook.SendDiscordWebhook(graphql.Log{
-						Message:  log.Message,
-						Severity: log.Severity,
-						Embed:    true,
-					})
+					if os.Getenv("DISCORD_WEBHOOK_URL") != "" {
+						err = webhook.SendDiscordWebhook(graphql.Log{
+							Message:  log.Message,
+							Severity: log.Severity,
+							Embed:    true,
+						})
 
-					if err != nil {
-						fmt.Println(err)
+						if err != nil {
+							fmt.Println(err)
 
-						continue
+							continue
+						}
+					}
+
+					if os.Getenv("INGEST_URL") != "" {
+						err = webhook.SendGenericWebhook(graphql.Log{
+							Message:  log.Message,
+							Severity: log.Severity,
+							Embed:    true,
+						})
+
+						if err != nil {
+							fmt.Println(err)
+
+							continue
+						}
 					}
 				}
 			}

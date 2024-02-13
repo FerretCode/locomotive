@@ -1,6 +1,6 @@
 module github.com/ferretcode/locomotive
 
-go 1.21.0
+go 1.21.6
 
 require (
 	github.com/Coaltergeist/discordgo-embeds v0.0.0-20200820100501-c2b73750b716 // indirect

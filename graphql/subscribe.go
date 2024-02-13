@@ -2,13 +2,11 @@ package graphql
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/golang-module/carbon"
 	"github.com/hasura/go-graphql-client"
 )
 
@@ -18,14 +16,12 @@ type authedTransport struct {
 }
 
 type SubscriptionLogResponse struct {
-	Data struct {
-		EnvironmentLogs []struct {
-			Message   string            `json:"message"`
-			Severity  string            `json:"severity"`
-			Tags      map[string]string `json:"tags"`
-			Timestamp string            `json:"timestamp"`
-		} `json:"environmentLogs"`
-	} `json:"data"`
+	EnvironmentLogs []struct {
+		Message   string            `json:"message"`
+		Severity  string            `json:"severity"`
+		Tags      map[string]string `json:"tags"`
+		Timestamp string            `json:"timestamp"`
+	} `json:"environmentLogs"`
 }
 
 func (t *authedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -45,6 +41,8 @@ func (g *GraphQLClient) SubscribeToLogs(newLog chan SubscriptionLogResponse) err
 			},
 		})
 
+	client.WithProtocol(graphql.GraphQLWS)
+
 	defer client.Close()
 
 	// yucky
@@ -52,15 +50,10 @@ func (g *GraphQLClient) SubscribeToLogs(newLog chan SubscriptionLogResponse) err
 
 	variables := map[string]interface{}{
 		"environmentId": os.Getenv("ENVIRONMENT_ID"),
-		"beforeDate": carbon.
-			NewCarbon().
-			CreateFromTime(time.Now().UTC().Clock()).
-			ToRfc3339NanoString("UTC"),
-		"beforeLimit": 1000,
-		"filter":      "@service:" + os.Getenv("TRAIN"),
+		"beforeDate":    time.Now().Format(time.RFC3339Nano),
+		"beforeLimit":   0,
+		"filter":        "@service:" + os.Getenv("TRAIN"),
 	}
-
-	fmt.Println(variables)
 
 	stderr := log.New(os.Stderr, "", 0)
 
@@ -80,8 +73,6 @@ func (g *GraphQLClient) SubscribeToLogs(newLog chan SubscriptionLogResponse) err
 
 			return nil
 		}
-
-		fmt.Println(string(message))
 
 		newLog <- data
 
