@@ -4,18 +4,21 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ferretcode/locomotive/config"
 	"github.com/ferretcode/locomotive/graphql"
 )
 
 const (
 	ALL   = "all"
-	ERROR = "error"
+	ERROR = "err"
+	WARN  = "warn"
 	INFO  = "info"
 )
 
 const (
 	SEVERITY_INFO  = "info"
-	SEVERITY_ERROR = "error"
+	SEVERITY_ERROR = "err"
+	SEVERITY_WARN  = "warn"
 )
 
 type LogsResponse struct {
@@ -30,7 +33,7 @@ type RailwayLog struct {
 	Timestamp string `json:"timestamp"`
 }
 
-func GetLogs(ctx context.Context, client graphql.GraphQLClient, deploymentId string) (LogsResponse, error) {
+func GetLogs(ctx context.Context, client graphql.GraphQLClient, deploymentId string, cfg config.Config) (LogsResponse, error) {
 	query := fmt.Sprintf(
 		`
 		query MyQuery {
@@ -46,7 +49,7 @@ func GetLogs(ctx context.Context, client graphql.GraphQLClient, deploymentId str
 
 	logsResponse := LogsResponse{}
 
-	err := client.DoQuery(query, nil, &logsResponse)
+	err := client.DoQuery(query, nil, &logsResponse, cfg)
 
 	if err != nil {
 		return logsResponse, err

@@ -1,123 +1,98 @@
 package main
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"slices"
-	"strconv"
-	"time"
+	"strings"
+	"syscall"
 
+	"github.com/ferretcode/locomotive/config"
 	"github.com/ferretcode/locomotive/graphql"
-	"github.com/ferretcode/locomotive/railway"
 	"github.com/ferretcode/locomotive/webhook"
 	"github.com/joho/godotenv"
 )
 
 func main() {
-	_, err := os.Stat(".env")
+	var cfg config.Config
 
-	if err == nil {
-		err := godotenv.Load()
-
-		if err != nil {
+	if _, err := os.Stat(".env"); err == nil {
+		if godotenv.Load() != nil {
 			log.Fatal(err)
 		}
 	}
 
-	done := make(chan os.Signal)
-	signal.Notify(done, os.Interrupt, os.Kill)
-
-	pollingRate := int64(0)
-	pollingRateSeconds := os.Getenv("POLLING_RATE_SECONDS")
-
-	pollingRate, err = strconv.ParseInt(pollingRateSeconds, 10, 64)
+	cfg, err := config.GetConfig()
 
 	if err != nil {
-		log.Fatal(errors.New("POLLING_RATE_SECONDS must be an integer"))
+		log.Fatal(err)
 	}
 
-	if pollingRate == 0 {
-		pollingRate = 10
-	}
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
 
 	graphQlClient := graphql.GraphQLClient{
-		BaseURL: "https://backboard.railway.app/graphql/v2",
+		BaseURL:             "https://backboard.railway.app/graphql/v2",
+		BaseSubscriptionURL: "wss://backboard.railway.app/graphql/internal",
 	}
 
-	ctx := context.Background()
+	newLog := make(chan graphql.SubscriptionLogResponse)
 
 	go func() {
-		ticker := time.NewTicker(time.Duration(pollingRate) * time.Second)
-		lastTimestamp := ""
+		stderr := log.New(os.Stderr, "", 0)
 
+		err := graphQlClient.SubscribeToLogs(newLog, cfg)
+
+		if err != nil {
+			stderr.Println(err)
+		}
+	}()
+
+	go func() {
 		for {
 			select {
 			case <-done:
 				return
-			case <-ticker.C:
-				deployments, err := railway.GetDeployments(ctx, graphQlClient)
-
-				if err != nil {
-					fmt.Println(err)
-				}
-
-				logs, err := railway.GetLogs(ctx, graphQlClient, deployments.Data.Deployments.Edges[0].Node.ID)
-
-				if err != nil {
-					fmt.Println(err)
-
+			case logs := <-newLog:
+				if len(logs.EnvironmentLogs) == 0 {
 					continue
 				}
 
-				if len(logs.Data.DeploymentLogs) == 0 {
-					continue
-				}
-
-				lastLog := len(logs.Data.DeploymentLogs) - 1
-
-				lastAcknowledgedLog := slices.IndexFunc(logs.Data.DeploymentLogs, func(i railway.RailwayLog) bool {
-					return lastTimestamp == i.Timestamp
-				})
-
-				slicedLogs := logs.Data.DeploymentLogs
-
-				if lastAcknowledgedLog < 0 {
-					slicedLogs = []railway.RailwayLog{slicedLogs[lastLog]}
-				} else {
-					slicedLogs = slicedLogs[lastAcknowledgedLog+1:]
-				}
-
-				for _, log := range slicedLogs {
-					switch os.Getenv("LOGS_FILTER") {
-					case "ALL":
-						break
-					case "ERROR":
-						if log.Severity != railway.SEVERITY_ERROR {
-							continue
-						}
-					case "INFO":
-						if log.Severity != railway.SEVERITY_INFO {
-							continue
-						}
-					}
-
-					err = webhook.SendDiscordWebhook(webhook.Log{
-						Message:  log.Message,
-						Severity: log.Severity,
-						Embed:    true,
-					})
-
-					if err != nil {
-						fmt.Println(err)
-
+				for _, log := range logs.EnvironmentLogs {
+					if len(cfg.LogsFilter) > 0 &&
+						!slices.Contains(cfg.LogsFilter, "all") &&
+						!slices.Contains(cfg.LogsFilter, strings.ToLower(log.Severity)) {
 						continue
 					}
 
-					lastTimestamp = log.Timestamp
+					graphQlLog := graphql.Log{
+						Message:    log.Message,
+						Severity:   log.Severity,
+						Attributes: log.Attributes,
+						Embed:      true,
+					}
+
+					if cfg.DiscordWebhookUrl != "" {
+						err = webhook.SendDiscordWebhook(graphQlLog, cfg)
+
+						if err != nil {
+							fmt.Println(err)
+
+							continue
+						}
+					}
+
+					if cfg.IngestUrl != "" {
+						err = webhook.SendGenericWebhook(graphQlLog, cfg)
+
+						if err != nil {
+							fmt.Println(err)
+
+							continue
+						}
+					}
 				}
 			}
 		}

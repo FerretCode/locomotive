@@ -3,23 +3,18 @@ package webhook
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/Coaltergeist/discordgo-embeds/colors"
 	"github.com/Coaltergeist/discordgo-embeds/embed"
 	"github.com/bwmarrin/discordgo"
+	"github.com/ferretcode/locomotive/config"
+	"github.com/ferretcode/locomotive/graphql"
 	"github.com/ferretcode/locomotive/railway"
 )
 
-type Log struct {
-	Message  string
-	Severity string
-	Embed    bool
-}
-
-func SendDiscordWebhook(log Log) error {
-	webhookUrl := os.Getenv("DISCORD_WEBHOOK_URL")
+func SendDiscordWebhook(log graphql.Log, cfg config.Config) error {
+	webhookUrl := cfg.DiscordWebhookUrl 
 
 	if webhookUrl == "" {
 		return nil
@@ -34,7 +29,7 @@ func SendDiscordWebhook(log Log) error {
 	webhookId := split[0]
 	webhookToken := split[1]
 
-	s, err := discordgo.New("Webhook " + os.Getenv("DISCORD_WEBHOOK_URL"))
+	s, err := discordgo.New("Webhook " + cfg.DiscordWebhookUrl)
 
 	if err != nil {
 		return err
@@ -67,7 +62,7 @@ func SendDiscordWebhook(log Log) error {
 	return nil
 }
 
-func getColor(log Log) *colors.Color {
+func getColor(log graphql.Log) *colors.Color {
 	var color *colors.Color
 
 	switch log.Severity {
@@ -75,6 +70,8 @@ func getColor(log Log) *colors.Color {
 		color = colors.White()
 	case railway.SEVERITY_ERROR:
 		color = colors.Red()
+	case railway.SEVERITY_WARN:
+		color = colors.Yellow()
 	default:
 		color = colors.Black()
 	}

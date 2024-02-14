@@ -1,10 +1,11 @@
 module github.com/ferretcode/locomotive
 
-go 1.21.0
+go 1.21.6
 
 require (
 	github.com/Coaltergeist/discordgo-embeds v0.0.0-20200820100501-c2b73750b716 // indirect
 	github.com/bwmarrin/discordgo v0.27.1 // indirect
+	github.com/caarlos0/env/v10 v10.0.0 // indirect
 	github.com/gobuffalo/envy v1.10.2 // indirect
 	github.com/gobuffalo/packd v1.0.2 // indirect
 	github.com/gobuffalo/packr v1.30.1 // indirect
