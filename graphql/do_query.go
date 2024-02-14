@@ -5,19 +5,20 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"os"
+
+	"github.com/ferretcode/locomotive/config"
 )
 
 type GraphQLClient struct {
 	BaseSubscriptionURL string
-	BaseURL string
+	BaseURL             string
 }
 
 type Log struct {
-	Message  string
-	Severity string
-  Attributes []Attribute
-	Embed    bool
+	Message    string
+	Severity   string
+	Attributes []Attribute
+	Embed      bool
 }
 
 type GraphQLRequest struct {
@@ -25,7 +26,7 @@ type GraphQLRequest struct {
 	Variables map[string]interface{} `json:"variables"`
 }
 
-func (g *GraphQLClient) DoQuery(query string, variables map[string]interface{}, to interface{}) error {
+func (g *GraphQLClient) DoQuery(query string, variables map[string]interface{}, to interface{}, cfg config.Config) error {
 	graphQlRequest := GraphQLRequest{
 		Query:     query,
 		Variables: variables,
@@ -48,7 +49,7 @@ func (g *GraphQLClient) DoQuery(query string, variables map[string]interface{}, 
 	}
 
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Bearer "+os.Getenv("RAILWAY_API_KEY"))
+	req.Header.Add("Authorization", "Bearer "+cfg.RailwayApiKey)
 
 	res, err := http.DefaultClient.Do(req)
 

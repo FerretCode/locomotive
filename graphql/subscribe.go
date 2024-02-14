@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/ferretcode/locomotive/config"
 	"github.com/hasura/go-graphql-client"
 )
 
@@ -17,18 +18,18 @@ type authedTransport struct {
 
 type SubscriptionLogResponse struct {
 	EnvironmentLogs []struct {
-		Message   string            `json:"message"`
-		Severity  string            `json:"severity"`
-		Tags      map[string]string `json:"tags"`
-		Timestamp string            `json:"timestamp"`
-    Attributes []Attribute `json:"attributes"`
+		Message    string            `json:"message"`
+		Severity   string            `json:"severity"`
+		Tags       map[string]string `json:"tags"`
+		Timestamp  string            `json:"timestamp"`
+		Attributes []Attribute       `json:"attributes"`
 	} `json:"environmentLogs"`
 }
 
-type Attribute struct{
-    Key string `json:"key"`
-    Value string `json:"value"`
-  }
+type Attribute struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
 
 func (t *authedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Set("Authorization", "Bearer "+t.token)
@@ -36,12 +37,12 @@ func (t *authedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.wrapped.RoundTrip(req)
 }
 
-func (g *GraphQLClient) SubscribeToLogs(newLog chan SubscriptionLogResponse) error {
+func (g *GraphQLClient) SubscribeToLogs(newLog chan SubscriptionLogResponse, cfg config.Config) error {
 	client := graphql.NewSubscriptionClient(g.BaseSubscriptionURL).
 		WithWebSocketOptions(graphql.WebsocketOptions{
 			HTTPClient: &http.Client{
 				Transport: &authedTransport{
-					token:   os.Getenv("RAILWAY_API_KEY"),
+					token:   cfg.RailwayApiKey,
 					wrapped: http.DefaultTransport,
 				},
 			},
@@ -55,10 +56,10 @@ func (g *GraphQLClient) SubscribeToLogs(newLog chan SubscriptionLogResponse) err
 	query := "subscription streamEnvironmentLogs($environmentId: String!, $filter: String, $beforeLimit: Int!, $beforeDate: String, $anchorDate: String, $afterDate: String, $afterLimit: Int) {\n  environmentLogs(\n    environmentId: $environmentId\n    filter: $filter\n    beforeDate: $beforeDate\n    anchorDate: $anchorDate\n    afterDate: $afterDate\n    beforeLimit: $beforeLimit\n    afterLimit: $afterLimit\n  ) {\n    ...LogFields\n  }\n}\n\nfragment LogFields on Log {\n  timestamp\n  message\n  severity\n  tags {\n    projectId\n    environmentId\n    pluginId\n    serviceId\n    deploymentId\n    deploymentInstanceId\n    snapshotId\n  }\n  attributes {\n    key\n    value\n  }\n}"
 
 	variables := map[string]interface{}{
-		"environmentId": os.Getenv("ENVIRONMENT_ID"),
+		"environmentId": cfg.EnvironmentId,
 		"beforeDate":    time.Now().Format(time.RFC3339Nano),
 		"beforeLimit":   0,
-		"filter":        "@service:" + os.Getenv("TRAIN"),
+		"filter":        "@service:" + cfg.Train,
 	}
 
 	stderr := log.New(os.Stderr, "", 0)

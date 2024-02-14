@@ -6,28 +6,31 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 
+	"github.com/ferretcode/locomotive/config"
 	"github.com/ferretcode/locomotive/graphql"
 )
 
-func SendGenericWebhook(log graphql.Log) error {
-  if log.Message != "" && len(log.Attributes) > 0 {
-    message := make(map[string]interface{})
+func SendGenericWebhook(log graphql.Log, cfg config.Config) error {
+	if log.Message != "" && len(log.Attributes) > 0 {
+		message := make(map[string]interface{})
 
-    for _, attr := range log.Attributes {
-      message[attr.Key] = attr.Value
-    }
+		for _, attr := range log.Attributes {
+			message[attr.Key] = attr.Value
+		}
 
-    bytes, err := json.Marshal(message)
+		message["message"] = log.Message
 
-    if err != nil {
-      return err
-    }
+		bytes, err := json.Marshal(message)
 
-    log.Message = string(bytes)
-  }
+		if err != nil {
+			return err
+		}
+
+		log.Message = string(bytes)
+		log.Attributes = nil
+	}
 
 	data, err := json.Marshal(log)
 
@@ -37,7 +40,7 @@ func SendGenericWebhook(log graphql.Log) error {
 
 	req, err := http.NewRequest(
 		"POST",
-		os.Getenv("INGEST_URL"),
+		cfg.IngestUrl,
 		bytes.NewBuffer(data),
 	)
 
@@ -45,12 +48,10 @@ func SendGenericWebhook(log graphql.Log) error {
 		return err
 	}
 
-	headers := os.Getenv("ADDITIONAL_HEADERS")
+	headers := cfg.AdditionalHeaders
 
-	if headers != "" {
-		fields := strings.Split(headers, ";")
-
-		for _, field := range fields {
+	if len(headers) > 0 {
+		for _, field := range headers {
 			key := field[:strings.Index(field, "=")]
 			value := field[len(key)+1:]
 

@@ -9,20 +9,29 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/ferretcode/locomotive/config"
 	"github.com/ferretcode/locomotive/graphql"
 	"github.com/ferretcode/locomotive/webhook"
 	"github.com/joho/godotenv"
 )
 
 func main() {
+	var cfg config.Config
+
 	_, err := os.Stat(".env")
 
 	if err == nil {
-		err := godotenv.Load()
+		err = godotenv.Load()
 
 		if err != nil {
 			log.Fatal(err)
 		}
+	}
+
+	cfg, err = config.GetConfig()
+
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	done := make(chan os.Signal, 1)
@@ -38,14 +47,12 @@ func main() {
 	go func() {
 		stderr := log.New(os.Stderr, "", 0)
 
-		err := graphQlClient.SubscribeToLogs(newLog)
+		err := graphQlClient.SubscribeToLogs(newLog, cfg)
 
 		if err != nil {
 			stderr.Println(err)
 		}
 	}()
-
-	filters := strings.Split(os.Getenv("LOGS_FILTER"), ",")
 
 	go func() {
 		for {
@@ -58,21 +65,21 @@ func main() {
 				}
 
 				for _, log := range logs.EnvironmentLogs {
-					if os.Getenv("LOGS_FILTER") != "" &&
-						os.Getenv("LOGS_FILTER") != "all" &&
-						!slices.Contains(filters, strings.ToLower(log.Severity)) {
+					if len(cfg.LogsFilter) > 0 &&
+						!slices.Contains(cfg.LogsFilter, "all") &&
+						!slices.Contains(cfg.LogsFilter, strings.ToLower(log.Severity)) {
 						continue
 					}
 
-          graphQlLog := graphql.Log{
-            Message:  log.Message,
-            Severity: log.Severity,
-            Attributes: log.Attributes,
-            Embed:    true,
-          }
+					graphQlLog := graphql.Log{
+						Message:    log.Message,
+						Severity:   log.Severity,
+						Attributes: log.Attributes,
+						Embed:      true,
+					}
 
-					if os.Getenv("DISCORD_WEBHOOK_URL") != "" {
-						err = webhook.SendDiscordWebhook(graphQlLog)
+					if cfg.DiscordWebhookUrl != "" {
+						err = webhook.SendDiscordWebhook(graphQlLog, cfg)
 
 						if err != nil {
 							fmt.Println(err)
@@ -81,8 +88,8 @@ func main() {
 						}
 					}
 
-					if os.Getenv("INGEST_URL") != "" {
-						err = webhook.SendGenericWebhook(graphQlLog)
+					if cfg.IngestUrl != "" {
+						err = webhook.SendGenericWebhook(graphQlLog, cfg)
 
 						if err != nil {
 							fmt.Println(err)

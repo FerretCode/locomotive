@@ -3,18 +3,18 @@ package webhook
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/Coaltergeist/discordgo-embeds/colors"
 	"github.com/Coaltergeist/discordgo-embeds/embed"
 	"github.com/bwmarrin/discordgo"
+	"github.com/ferretcode/locomotive/config"
 	"github.com/ferretcode/locomotive/graphql"
 	"github.com/ferretcode/locomotive/railway"
 )
 
-func SendDiscordWebhook(log graphql.Log) error {
-	webhookUrl := os.Getenv("DISCORD_WEBHOOK_URL")
+func SendDiscordWebhook(log graphql.Log, cfg config.Config) error {
+	webhookUrl := cfg.DiscordWebhookUrl 
 
 	if webhookUrl == "" {
 		return nil
@@ -29,7 +29,7 @@ func SendDiscordWebhook(log graphql.Log) error {
 	webhookId := split[0]
 	webhookToken := split[1]
 
-	s, err := discordgo.New("Webhook " + os.Getenv("DISCORD_WEBHOOK_URL"))
+	s, err := discordgo.New("Webhook " + cfg.DiscordWebhookUrl)
 
 	if err != nil {
 		return err
