@@ -13,6 +13,8 @@ import (
 )
 
 func SendGenericWebhook(log graphql.Log, cfg config.Config) error {
+	var logs []string
+
 	if log.Message != "" && len(log.Attributes) > 0 {
 		message := make(map[string]interface{})
 
@@ -30,22 +32,22 @@ func SendGenericWebhook(log graphql.Log, cfg config.Config) error {
 
 		log.Message = string(bytes)
 		log.Attributes = nil
+
+		logs = append(logs, log.Message)
 	}
 
-	var logs []graphql.Log
+	logs = append(logs, log.Message)
 
-	logs = append(logs, log)
-
-	data, err := json.Marshal(logs)
+	body, err := json.Marshal(logs)
 
 	if err != nil {
-		return nil
+		return err
 	}
 
 	req, err := http.NewRequest(
 		"POST",
 		cfg.IngestUrl,
-		bytes.NewBuffer(data),
+		bytes.NewBuffer(body),
 	)
 
 	if err != nil {
