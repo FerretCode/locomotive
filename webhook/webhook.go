@@ -32,7 +32,11 @@ func SendGenericWebhook(log graphql.Log, cfg config.Config) error {
 		log.Attributes = nil
 	}
 
-	data, err := json.Marshal(log)
+	var logs []graphql.Log
+
+	logs = append(logs, log)
+
+	data, err := json.Marshal(logs)
 
 	if err != nil {
 		return nil
@@ -47,6 +51,8 @@ func SendGenericWebhook(log graphql.Log, cfg config.Config) error {
 	if err != nil {
 		return err
 	}
+
+	req.Header.Add("Content-Type", "application/json")
 
 	headers := cfg.AdditionalHeaders
 

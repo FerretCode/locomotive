@@ -18,17 +18,13 @@ import (
 func main() {
 	var cfg config.Config
 
-	_, err := os.Stat(".env")
-
-	if err == nil {
-		err = godotenv.Load()
-
-		if err != nil {
+	if _, err := os.Stat(".env"); err == nil {
+		if godotenv.Load() != nil {
 			log.Fatal(err)
 		}
 	}
 
-	cfg, err = config.GetConfig()
+	cfg, err := config.GetConfig()
 
 	if err != nil {
 		log.Fatal(err)
