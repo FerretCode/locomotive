@@ -1,7 +1,19 @@
-FROM golang:1.21-alpine
-WORKDIR /home/locomotive
+FROM golang:1.21.6-alpine AS builder
+
+WORKDIR /app
+
 COPY go.mod go.sum ./
-RUN go mod download && go mod verify
-COPY . . 
-RUN go build -v -o ./bin/ ./...
-CMD [ "./bin/locomotive" ]
+
+RUN go mod download
+
+COPY . ./
+
+RUN go build -ldflags "-w -s" -o main
+
+FROM gcr.io/distroless/static
+
+WORKDIR /app
+
+COPY --from=builder /app/main ./
+
+ENTRYPOINT ["/app/main"]
