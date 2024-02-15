@@ -2,17 +2,15 @@ package webhook
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"slices"
-	"unsafe"
 
-	"github.com/buger/jsonparser"
 	"github.com/ferretcode/locomotive/config"
 	"github.com/ferretcode/locomotive/graphql"
+	"github.com/ferretcode/locomotive/logline"
 )
 
 var acceptedStatusCodes = []int{
@@ -27,30 +25,10 @@ func SendGenericWebhook(log *graphql.EnvironmentLog, cfg *config.Config) (err er
 		return nil
 	}
 
-	jsonObject := json.RawMessage("{}")
+	jsonObject, err := logline.ReconstructLogLine(log)	
 
-	jsonObject, err = jsonparser.Set(jsonObject, log.MessageRaw, "message")
 	if err != nil {
-		return fmt.Errorf("failed to append message attribute to object: %w", err)
-	}
-
-	if len(log.Attributes) > 0 {
-		for _, attr := range log.Attributes {
-			jsonObject, err = jsonparser.Set(jsonObject, unsafe.Slice(unsafe.StringData(attr.Value), len(attr.Value)), attr.Key)
-			if err != nil {
-				return fmt.Errorf("failed to append json attribute to object: %w", err)
-			}
-		}
-	} else {
-		jsonObject, err = jsonparser.Set(jsonObject, log.TimestampRaw, "time")
-		if err != nil {
-			return fmt.Errorf("failed to append time attribute to object: %w", err)
-		}
-
-		jsonObject, err = jsonparser.Set(jsonObject, log.SeverityRaw, "severity")
-		if err != nil {
-			return fmt.Errorf("failed to append severity attribute to object: %w", err)
-		}
+		return err
 	}
 
 	req, err := http.NewRequest(http.MethodPost, cfg.IngestUrl, bytes.NewBuffer(jsonObject))
