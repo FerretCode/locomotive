@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/signal"
 	"slices"
+	"strings"
 	"syscall"
 
 	"github.com/ferretcode/locomotive/config"
@@ -44,7 +45,7 @@ func main() {
 				return
 			}
 
-			if len(cfg.LogsFilter) > 0 && !slices.Contains(cfg.LogsFilter, "all") && !slices.Contains(cfg.LogsFilter, log.Severity) {
+			if len(cfg.LogsFilter) > 0 && !slices.Contains(cfg.LogsFilter, "all") && !slices.Contains(cfg.LogsFilter, strings.ToLower(log.Severity)) {
 				return
 			}
 
