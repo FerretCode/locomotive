@@ -29,7 +29,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	firstTrain := make(chan struct{}, 1)
 	done := make(chan os.Signal, 1)
 
 	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
@@ -39,48 +38,59 @@ func main() {
 		BaseSubscriptionURL: "wss://backboard.railway.app/graphql/internal",
 	}
 
+	logTrack := make(chan *graphql.EnvironmentLog)
+	trackError := make(chan error)
+
+	firstLog := true
+
 	go func() {
-		if err := graphQlClient.SubscribeToLogs(func(log *graphql.EnvironmentLog, err error) {
-			if err != nil {
-				logger.Stderr.Error("error during log subscription", logger.ErrAttr(err))
-				return
-			}
-
-			if len(cfg.LogsFilter) > 0 && !slices.Contains(cfg.LogsFilter, "all") && !slices.Contains(cfg.LogsFilter, strings.ToLower(log.Severity)) {
-				return
-			}
-
-			jsonLog, err := logline.ReconstructLogLine(log)
-			if err != nil {
-				return
-			}
-
-			if cfg.DiscordWebhookUrl != "" {
-				if err := webhook.SendDiscordWebhook(jsonLog, log, true, cfg); err != nil {
-					logger.Stderr.Error("error sending Discord webhook", logger.ErrAttr(err))
-					return
-				}
-			}
-
-			if cfg.IngestUrl != "" {
-				if err := webhook.SendGenericWebhook(jsonLog, cfg); err != nil {
-					logger.Stderr.Error("error sending generic webhook", logger.ErrAttr(err))
-					return
-				}
-			}
-
-			firstTrain <- struct{}{}
-		}, cfg); err != nil {
+		if err := graphQlClient.SubscribeToLogs(logTrack, trackError, cfg); err != nil {
 			logger.Stderr.Error("error subscribing to logs", logger.ErrAttr(err))
 			os.Exit(1)
 		}
 	}()
 
+	go func() {
+		for {
+			select {
+			case <-done:
+				os.Exit(0)
+			case log := <-logTrack:
+				if len(cfg.LogsFilter) > 0 && !slices.Contains(cfg.LogsFilter, "all") && !slices.Contains(cfg.LogsFilter, strings.ToLower(log.Severity)) {
+					continue
+				}
+
+				jsonLog, err := logline.ReconstructLogLine(log)
+				if err != nil {
+					return
+				}
+
+				if cfg.DiscordWebhookUrl != "" {
+					if err := webhook.SendDiscordWebhook(jsonLog, log, true, cfg); err != nil {
+						logger.Stderr.Error("error sending Discord webhook", logger.ErrAttr(err))
+						continue
+					}
+				}
+
+				if cfg.IngestUrl != "" {
+					if err := webhook.SendGenericWebhook(jsonLog, cfg); err != nil {
+						logger.Stderr.Error("error sending generic webhook", logger.ErrAttr(err))
+						return
+					}
+				}
+
+				if firstLog {
+					logger.Stdout.Info("The locomotive is chugging along...")
+					firstLog = false
+				}
+			case err := <-trackError:
+				logger.Stderr.Error("error during log subscription", logger.ErrAttr(err))
+				continue
+			}
+		}
+	}()
+
 	logger.Stdout.Info("The locomotive is waiting for cargo...")
-
-	<-firstTrain
-
-	logger.Stdout.Info("The locomotive is chugging along...")
 
 	<-done
 }

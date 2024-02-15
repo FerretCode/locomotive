@@ -11,7 +11,7 @@ import (
 	"github.com/hasura/go-graphql-client"
 )
 
-func (g *GraphQLClient) SubscribeToLogs(logFunc func(log *EnvironmentLog, err error), cfg *config.Config) error {
+func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- *EnvironmentLog, trackError chan<- error, cfg *config.Config) error {
 	client := graphql.NewSubscriptionClient(g.BaseSubscriptionURL).
 		WithWebSocketOptions(graphql.WebsocketOptions{
 			HTTPClient: &http.Client{
@@ -38,15 +38,15 @@ func (g *GraphQLClient) SubscribeToLogs(logFunc func(log *EnvironmentLog, err er
 
 	if _, err := client.Exec(query, variables, func(message []byte, err error) error {
 		if err != nil {
-			logFunc(nil, err)
-			return nil
+			trackError <- err
+			return err
 		}
 
 		data := &SubscriptionLogResponse{}
 
 		if err := json.Unmarshal(message, &data); err != nil {
-			logFunc(nil, err)
-			return nil
+			trackError <- err
+			return err
 		}
 
 		if len(data.EnvironmentLogs) == 0 {
@@ -62,19 +62,19 @@ func (g *GraphQLClient) SubscribeToLogs(logFunc func(log *EnvironmentLog, err er
 				unsafe.String(unsafe.SliceData(data.EnvironmentLogs[i].MessageRaw), len(data.EnvironmentLogs[i].MessageRaw)),
 			)
 			if err != nil {
-				logFunc(nil, err)
-				return nil
+				trackError <- err
+				return err
 			}
 
 			data.EnvironmentLogs[i].Severity, err = strconv.Unquote(
 				unsafe.String(unsafe.SliceData(data.EnvironmentLogs[i].SeverityRaw), len(data.EnvironmentLogs[i].SeverityRaw)),
 			)
 			if err != nil {
-				logFunc(nil, err)
-				return nil
+				trackError <- err
+				return err
 			}
 
-			logFunc(&data.EnvironmentLogs[i], nil)
+			logTrack <- &data.EnvironmentLogs[i]
 		}
 
 		return nil
