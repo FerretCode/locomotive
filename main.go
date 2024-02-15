@@ -10,6 +10,7 @@ import (
 	"github.com/ferretcode/locomotive/config"
 	"github.com/ferretcode/locomotive/graphql"
 	"github.com/ferretcode/locomotive/logger"
+	"github.com/ferretcode/locomotive/logline"
 	"github.com/ferretcode/locomotive/webhook"
 	"github.com/joho/godotenv"
 )
@@ -49,15 +50,20 @@ func main() {
 				return
 			}
 
+			jsonLog, err := logline.ReconstructLogLine(log)
+			if err != nil {
+				return
+			}
+
 			if cfg.DiscordWebhookUrl != "" {
-				if err := webhook.SendDiscordWebhook(log, true, cfg); err != nil {
+				if err := webhook.SendDiscordWebhook(jsonLog, log, true, cfg); err != nil {
 					logger.Stderr.Error("error sending Discord webhook", logger.ErrAttr(err))
 					return
 				}
 			}
 
 			if cfg.IngestUrl != "" {
-				if err := webhook.SendGenericWebhook(log, cfg); err != nil {
+				if err := webhook.SendGenericWebhook(jsonLog, cfg); err != nil {
 					logger.Stderr.Error("error sending generic webhook", logger.ErrAttr(err))
 					return
 				}

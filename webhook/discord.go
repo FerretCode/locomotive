@@ -1,6 +1,7 @@
 package webhook
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -9,23 +10,12 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/ferretcode/locomotive/config"
 	"github.com/ferretcode/locomotive/graphql"
-	"github.com/ferretcode/locomotive/logline"
 	"github.com/ferretcode/locomotive/railway"
 )
 
-func SendDiscordWebhook(log *graphql.EnvironmentLog, embedLog bool, cfg *config.Config) error {
+func SendDiscordWebhook(jsonLog *json.RawMessage, log *graphql.EnvironmentLog, embedLog bool, cfg *config.Config) error {
 	if cfg.DiscordWebhookUrl == "" {
 		return nil
-	}
-
-	if len(log.MessageRaw) == 0 {
-		return nil
-	}
-
-	jsonObject, err := logline.ReconstructLogLine(log)
-
-	if err != nil {
-		return err
 	}
 
 	split := strings.Split(cfg.DiscordWebhookUrl, "/")[5:]
@@ -45,7 +35,7 @@ func SendDiscordWebhook(log *graphql.EnvironmentLog, embedLog bool, cfg *config.
 		em := embed.New().
 			SetTitle(strings.ToUpper(log.Severity)).
 			SetDescription(fmt.Sprintf("```%s```", log.Message)).
-			AddField("⠀", fmt.Sprintf("```%s```", (jsonObject)), false).
+			AddField("⠀", fmt.Sprintf("```%s```", jsonLog), false).
 			SetColor(getColor(log.Severity))
 
 		webhookParams.Embeds = []*discordgo.MessageEmbed{em.MessageEmbed}
