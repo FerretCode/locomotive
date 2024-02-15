@@ -4,86 +4,77 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
-	"strings"
+	"slices"
+	"unsafe"
 
+	"github.com/buger/jsonparser"
 	"github.com/ferretcode/locomotive/config"
 	"github.com/ferretcode/locomotive/graphql"
 )
 
-func SendGenericWebhook(log graphql.Log, cfg config.Config) error {
-	var logs []string
+var acceptedStatusCodes = []int{
+	http.StatusOK,
+	http.StatusNoContent,
+	http.StatusAccepted,
+	http.StatusCreated,
+}
 
-	if log.Message != "" && len(log.Attributes) > 0 {
-		message := make(map[string]interface{})
+func SendGenericWebhook(log *graphql.EnvironmentLog, cfg *config.Config) (err error) {
+	if len(log.MessageRaw) == 0 {
+		return nil
+	}
 
+	jsonObject := json.RawMessage("{}")
+
+	jsonObject, err = jsonparser.Set(jsonObject, log.MessageRaw, "message")
+	if err != nil {
+		return fmt.Errorf("failed to append message attribute to object: %w", err)
+	}
+
+	if len(log.Attributes) > 0 {
 		for _, attr := range log.Attributes {
-			message[attr.Key] = attr.Value
+			jsonObject, err = jsonparser.Set(jsonObject, unsafe.Slice(unsafe.StringData(attr.Value), len(attr.Value)), attr.Key)
+			if err != nil {
+				return fmt.Errorf("failed to append json attribute to object: %w", err)
+			}
 		}
-
-		message["message"] = log.Message
-
-		bytes, err := json.Marshal(message)
-
-		if err != nil {
-			return err
-		}
-
-		log.Message = string(bytes)
-		log.Attributes = nil
-
-		logs = append(logs, log.Message)
 	} else {
-		data, err := json.Marshal(log)
-
+		jsonObject, err = jsonparser.Set(jsonObject, log.TimestampRaw, "time")
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to append time attribute to object: %w", err)
 		}
 
-		logs = append(logs, string(data))
-	}
-
-	body, err := json.Marshal(logs)
-
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequest(
-		"POST",
-		cfg.IngestUrl,
-		bytes.NewBuffer(body),
-	)
-
-	if err != nil {
-		return err
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-
-	headers := cfg.AdditionalHeaders
-
-	if len(headers) > 0 {
-		for _, field := range headers {
-			key := field[:strings.Index(field, "=")]
-			value := field[len(key)+1:]
-
-			req.Header.Add(key, value)
+		jsonObject, err = jsonparser.Set(jsonObject, log.SeverityRaw, "severity")
+		if err != nil {
+			return fmt.Errorf("failed to append severity attribute to object: %w", err)
 		}
+	}
+
+	req, err := http.NewRequest(http.MethodPost, cfg.IngestUrl, bytes.NewBuffer(jsonObject))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Add("Content-Type", "application/x-ndjson")
+
+	for key, value := range cfg.AdditionalHeaders {
+		req.Header.Set(key, value)
 	}
 
 	res, err := http.DefaultClient.Do(req)
-
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to send webhook request: %w", err)
 	}
 
-	if res.StatusCode > 300 {
-		body, err := io.ReadAll(res.Body)
+	defer res.Body.Close()
 
+	if !slices.Contains(acceptedStatusCodes, res.StatusCode) {
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
-			return err
+			return fmt.Errorf("non success status code: %d", res.StatusCode)
 		}
 
 		return errors.New(string(body))

@@ -1,23 +1,56 @@
 package config
 
-import "github.com/caarlos0/env/v10"
+import (
+	"errors"
+	"fmt"
+	"strings"
 
-type Config struct {
-	RailwayApiKey     string   `env:"RAILWAY_API_KEY,required"`
-	EnvironmentId     string   `env:"ENVIRONMENT_ID,required"`
-	Train             string   `env:"TRAIN,required"`
-	LogsFilter        []string `env:"LOGS_FILTER" envSeparator:","`
-	DiscordWebhookUrl string   `env:"DISCORD_WEBHOOK_URL"`
-	IngestUrl         string   `env:"INGEST_URL"`
-	AdditionalHeaders []string `env:"ADDITIONAL_HEADERS" envSeparator:";"`
+	"github.com/caarlos0/env/v10"
+)
+
+type AdditionalHeaders map[string]string
+
+func (h *AdditionalHeaders) UnmarshalText(envByte []byte) error {
+	envString := string(envByte)
+	headers := make(map[string]string)
+
+	headerPairs := strings.SplitN(envString, ";", 2)
+
+	for _, header := range headerPairs {
+		keyValue := strings.SplitN(header, "=", 2)
+
+		if len(keyValue) != 2 {
+			return fmt.Errorf("header key value pair must be in format k=v")
+		}
+
+		headers[strings.TrimSpace(keyValue[0])] = strings.TrimSpace(keyValue[1])
+	}
+
+	*h = headers
+
+	return nil
 }
 
-func GetConfig() (Config, error) {
+type Config struct {
+	RailwayApiKey     string            `env:"RAILWAY_API_KEY,required"`
+	EnvironmentId     string            `env:"ENVIRONMENT_ID,required"`
+	Train             string            `env:"TRAIN,required"`
+	LogsFilter        []string          `env:"LOGS_FILTER" envSeparator:","`
+	DiscordWebhookUrl string            `env:"DISCORD_WEBHOOK_URL"`
+	IngestUrl         string            `env:"INGEST_URL"`
+	AdditionalHeaders AdditionalHeaders `env:"ADDITIONAL_HEADERS"`
+}
+
+func GetConfig() (*Config, error) {
 	config := Config{}
 
 	if err := env.Parse(&config); err != nil {
-		return Config{}, err
+		return nil, err
 	}
 
-	return config, nil
+	if config.DiscordWebhookUrl != "" && !strings.HasPrefix(config.DiscordWebhookUrl, "https://discord.com/api/webhooks/") {
+		return nil, errors.New("invalid Discord webhook URL")
+	}
+
+	return &config, nil
 }

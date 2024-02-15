@@ -1,7 +1,6 @@
 package webhook
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -13,18 +12,12 @@ import (
 	"github.com/ferretcode/locomotive/railway"
 )
 
-func SendDiscordWebhook(log graphql.Log, cfg config.Config) error {
-	webhookUrl := cfg.DiscordWebhookUrl 
-
-	if webhookUrl == "" {
+func SendDiscordWebhook(log *graphql.EnvironmentLog, embedLog bool, cfg *config.Config) error {
+	if cfg.DiscordWebhookUrl == "" {
 		return nil
 	}
 
-	if !strings.HasPrefix(webhookUrl, "https://discord.com/api/webhooks/") {
-		return errors.New("Invalid Discord webhook URL")
-	}
-
-	split := strings.Split(webhookUrl, "/")[5:]
+	split := strings.Split(cfg.DiscordWebhookUrl, "/")[5:]
 
 	webhookId := split[0]
 	webhookToken := split[1]
@@ -37,35 +30,33 @@ func SendDiscordWebhook(log graphql.Log, cfg config.Config) error {
 
 	webhookParams := &discordgo.WebhookParams{}
 
-	if log.Embed {
+	if embedLog {
 		em := embed.New().
 			SetTitle(strings.ToUpper(log.Severity)).
 			SetDescription(fmt.Sprintf("```%s```", log.Message)).
-			SetColor(getColor(log))
+			SetColor(getColor(log.Severity))
 
 		webhookParams.Embeds = []*discordgo.MessageEmbed{em.MessageEmbed}
 	} else {
-		webhookParams.Content = log.Message
+		webhookParams.Content = string(log.Message)
 	}
 
-	_, err = s.WebhookExecute(
+	if _, err := s.WebhookExecute(
 		webhookId,
 		webhookToken,
 		true,
 		webhookParams,
-	)
-
-	if err != nil {
+	); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func getColor(log graphql.Log) *colors.Color {
+func getColor(severity string) *colors.Color {
 	var color *colors.Color
 
-	switch log.Severity {
+	switch severity {
 	case railway.SEVERITY_INFO:
 		color = colors.White()
 	case railway.SEVERITY_ERROR:
