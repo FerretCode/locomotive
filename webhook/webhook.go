@@ -53,7 +53,7 @@ func SendGenericWebhook(log *graphql.EnvironmentLog, cfg *config.Config) (err er
 		}
 	}
 
-	req, err := http.NewRequest(http.MethodPost, cfg.IngestUrl, bytes.NewBuffer(jsonObject))
+	req, err := http.NewRequest(http.MethodPost, cfg.IngestUrl, bytes.NewReader(jsonObject))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
