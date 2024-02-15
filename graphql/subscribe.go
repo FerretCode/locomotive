@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"unsafe"
 
 	"github.com/ferretcode/locomotive/config"
 	"github.com/hasura/go-graphql-client"
@@ -51,8 +52,21 @@ func (g *GraphQLClient) SubscribeToLogs(logFunc func(log *EnvironmentLog, err er
 		}
 
 		for i := range data.EnvironmentLogs {
-			data.EnvironmentLogs[i].Message, _ = strconv.Unquote(string(data.EnvironmentLogs[i].MessageRaw))
-			data.EnvironmentLogs[i].Severity, _ = strconv.Unquote(string(data.EnvironmentLogs[i].SeverityRaw))
+			data.EnvironmentLogs[i].Message, err = strconv.Unquote(
+				unsafe.String(unsafe.SliceData(data.EnvironmentLogs[i].MessageRaw), len(data.EnvironmentLogs[i].MessageRaw)),
+			)
+			if err != nil {
+				logFunc(nil, err)
+				return nil
+			}
+
+			data.EnvironmentLogs[i].Severity, err = strconv.Unquote(
+				unsafe.String(unsafe.SliceData(data.EnvironmentLogs[i].SeverityRaw), len(data.EnvironmentLogs[i].SeverityRaw)),
+			)
+			if err != nil {
+				logFunc(nil, err)
+				return nil
+			}
 
 			logFunc(&data.EnvironmentLogs[i], nil)
 		}
