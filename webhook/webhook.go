@@ -9,8 +9,6 @@ import (
 	"slices"
 
 	"github.com/ferretcode/locomotive/config"
-	"github.com/ferretcode/locomotive/graphql"
-	"github.com/ferretcode/locomotive/logline"
 )
 
 var acceptedStatusCodes = []int{
@@ -20,18 +18,8 @@ var acceptedStatusCodes = []int{
 	http.StatusCreated,
 }
 
-func SendGenericWebhook(log *graphql.EnvironmentLog, cfg *config.Config) (err error) {
-	if len(log.MessageRaw) == 0 {
-		return nil
-	}
-
-	jsonObject, err := logline.ReconstructLogLine(log)	
-
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, cfg.IngestUrl, bytes.NewReader(jsonObject))
+func SendGenericWebhook(jsonLog *[]byte, cfg *config.Config) (err error) {
+	req, err := http.NewRequest(http.MethodPost, cfg.IngestUrl, bytes.NewReader(*jsonLog))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
