@@ -3,8 +3,6 @@ package main
 import (
 	"os"
 	"os/signal"
-	"slices"
-	"strings"
 	"syscall"
 
 	"github.com/ferretcode/locomotive/config"
@@ -33,9 +31,14 @@ func main() {
 
 	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
 
-	graphQlClient := graphql.GraphQLClient{
+	gqlClient, err := graphql.NewClient(&graphql.GraphQLClient{
+		AuthToken:           cfg.RailwayApiKey,
 		BaseURL:             "https://backboard.railway.app/graphql/v2",
 		BaseSubscriptionURL: "wss://backboard.railway.app/graphql/internal",
+	})
+	if err != nil {
+		logger.Stderr.Error("error creating graphql client", logger.ErrAttr(err))
+		os.Exit(1)
 	}
 
 	logTrack := make(chan *graphql.EnvironmentLog)
@@ -44,7 +47,7 @@ func main() {
 	firstLog := true
 
 	go func() {
-		if err := graphQlClient.SubscribeToLogs(logTrack, trackError, cfg); err != nil {
+		if err := gqlClient.SubscribeToLogs(logTrack, trackError, cfg); err != nil {
 			logger.Stderr.Error("error subscribing to logs", logger.ErrAttr(err))
 			os.Exit(1)
 		}
@@ -56,10 +59,6 @@ func main() {
 			case <-done:
 				os.Exit(0)
 			case log := <-logTrack:
-				if len(cfg.LogsFilter) > 0 && !slices.Contains(cfg.LogsFilter, "all") && !slices.Contains(cfg.LogsFilter, strings.ToLower(log.Severity)) {
-					continue
-				}
-
 				jsonLog, err := logline.ReconstructLogLine(log)
 				if err != nil {
 					return

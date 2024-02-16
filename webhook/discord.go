@@ -1,7 +1,6 @@
 package webhook
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -13,7 +12,7 @@ import (
 	"github.com/ferretcode/locomotive/railway"
 )
 
-func SendDiscordWebhook(jsonLog *json.RawMessage, log *graphql.EnvironmentLog, embedLog bool, cfg *config.Config) error {
+func SendDiscordWebhook(jsonLog *[]byte, log *graphql.EnvironmentLog, embedLog bool, cfg *config.Config) error {
 	if cfg.DiscordWebhookUrl == "" {
 		return nil
 	}

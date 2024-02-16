@@ -2,7 +2,6 @@ package webhook
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -19,7 +18,7 @@ var acceptedStatusCodes = []int{
 	http.StatusCreated,
 }
 
-func SendGenericWebhook(jsonLog *json.RawMessage, cfg *config.Config) (err error) {
+func SendGenericWebhook(jsonLog *[]byte, cfg *config.Config) (err error) {
 	req, err := http.NewRequest(http.MethodPost, cfg.IngestUrl, bytes.NewReader(*jsonLog))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)

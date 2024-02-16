@@ -34,7 +34,7 @@ func (h *AdditionalHeaders) UnmarshalText(envByte []byte) error {
 type Config struct {
 	RailwayApiKey     string            `env:"RAILWAY_API_KEY,required"`
 	EnvironmentId     string            `env:"ENVIRONMENT_ID,required"`
-	Train             string            `env:"TRAIN,required"`
+	Train             []string          `env:"TRAIN,required" envSeparator:","`
 	LogsFilter        []string          `env:"LOGS_FILTER" envSeparator:","`
 	DiscordWebhookUrl string            `env:"DISCORD_WEBHOOK_URL"`
 	IngestUrl         string            `env:"INGEST_URL"`
