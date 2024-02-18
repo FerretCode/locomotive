@@ -28,6 +28,7 @@ type EnvironmentLog struct {
 
 type Tags struct {
 	ServiceId string `json:"serviceId"`
+	ProjectId string `json:"projectId"`
 }
 
 type Attribute struct {
@@ -40,6 +41,8 @@ type Metadata struct {
 	ServiceName     string `json:"serviceName"`
 	EnvironmentId   string `json:"environmentId"`
 	EnvironmentName string `json:"environmentName"`
+	ProjectId       string `json:"projectId"`
+	ProjectName     string `json:"projectName"`
 }
 
 type GraphQLClient struct {

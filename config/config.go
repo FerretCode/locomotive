@@ -39,6 +39,7 @@ type Config struct {
 	DiscordWebhookUrl string            `env:"DISCORD_WEBHOOK_URL"`
 	IngestUrl         string            `env:"INGEST_URL"`
 	AdditionalHeaders AdditionalHeaders `env:"ADDITIONAL_HEADERS"`
+	ReportStatusEvery int64             `env:"REPORT_STATUS_EVERY" envDefault:"50"`
 }
 
 func GetConfig() (*Config, error) {
@@ -50,6 +51,10 @@ func GetConfig() (*Config, error) {
 
 	if config.DiscordWebhookUrl != "" && !strings.HasPrefix(config.DiscordWebhookUrl, "https://discord.com/api/webhooks/") {
 		return nil, errors.New("invalid Discord webhook URL")
+	}
+
+	if config.DiscordWebhookUrl == "" && config.IngestUrl == "" {
+		return nil, errors.New("specify either a discord webhook url or an ingest url")
 	}
 
 	return &config, nil

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -44,7 +45,7 @@ func main() {
 	logTrack := make(chan *graphql.EnvironmentLog)
 	trackError := make(chan error)
 
-	firstLog := true
+	var logsTransported int64
 
 	go func() {
 		if err := gqlClient.SubscribeToLogs(logTrack, trackError, cfg); err != nil {
@@ -61,7 +62,8 @@ func main() {
 			case log := <-logTrack:
 				jsonLog, err := logline.ReconstructLogLine(log)
 				if err != nil {
-					return
+					logger.Stderr.Error("error recreating log to json", logger.ErrAttr(err))
+					continue
 				}
 
 				if cfg.DiscordWebhookUrl != "" {
@@ -74,13 +76,16 @@ func main() {
 				if cfg.IngestUrl != "" {
 					if err := webhook.SendGenericWebhook(jsonLog, cfg); err != nil {
 						logger.Stderr.Error("error sending generic webhook", logger.ErrAttr(err))
-						return
+						continue
 					}
 				}
 
-				if firstLog {
-					logger.Stdout.Info("The locomotive is chugging along...")
-					firstLog = false
+				logsTransported++
+
+				if logsTransported == 1 || logsTransported%cfg.ReportStatusEvery == 0 {
+					logger.Stdout.Info("The locomotive is chugging along...",
+						slog.Int64("logs_transported", logsTransported),
+					)
 				}
 			case err := <-trackError:
 				logger.Stderr.Error("error during log subscription", logger.ErrAttr(err))

@@ -49,6 +49,8 @@ func (g *GraphQLClient) buildMetadataMap(cfg *config.Config) (map[string]string,
 		idNameMap[s.Node.ID] = s.Node.Name
 	}
 
+	idNameMap[project.Project.ID] = project.Project.Name
+
 	return idNameMap, nil
 }
 
@@ -59,7 +61,7 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- *EnvironmentLog, trackEr
 
 	metadataMap, err := g.buildMetadataMap(cfg)
 	if err != nil {
-		return err
+		return fmt.Errorf("error building metadata map: %w", err)
 	}
 
 	variables := map[string]any{
@@ -124,12 +126,21 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- *EnvironmentLog, trackEr
 				environmentName = "undefined"
 			}
 
-			data.EnvironmentLogs[i].Metadata = &Metadata{
-				ServiceId:     data.EnvironmentLogs[i].Tags.ServiceId,
-				EnvironmentId: cfg.EnvironmentId,
+			projectName, ok := metadataMap[data.EnvironmentLogs[i].Tags.ProjectId]
+			if !ok {
+				trackError <- fmt.Errorf("project name could not be found")
+				projectName = "undefined"
+			}
 
-				ServiceName:     serviceName,
+			data.EnvironmentLogs[i].Metadata = &Metadata{
+				ProjectId:   data.EnvironmentLogs[i].Tags.ProjectId,
+				ProjectName: projectName,
+
+				EnvironmentId:   cfg.EnvironmentId,
 				EnvironmentName: environmentName,
+
+				ServiceId:   data.EnvironmentLogs[i].Tags.ServiceId,
+				ServiceName: serviceName,
 			}
 
 			logTrack <- &data.EnvironmentLogs[i]
