@@ -9,10 +9,10 @@ import (
 	"github.com/ferretcode/locomotive/graphql"
 )
 
-func ReconstructLogLine(log *graphql.EnvironmentLog) (logLine *[]byte, err error) {
+func ReconstructLogLine(log *graphql.EnvironmentLog) (*[]byte, error) {
 	jsonObject := []byte("{}")
 
-	jsonObject, err = jsonparser.Set(jsonObject, log.MessageRaw, "message")
+	jsonObject, err := jsonparser.Set(jsonObject, log.MessageRaw, "message")
 	if err != nil {
 		return nil, fmt.Errorf("failed to append message attribute to object: %w", err)
 	}

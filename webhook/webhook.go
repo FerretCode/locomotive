@@ -2,7 +2,6 @@ package webhook
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -43,7 +42,7 @@ func SendGenericWebhook(jsonLog *[]byte, cfg *config.Config) (err error) {
 			return fmt.Errorf("non success status code: %d", res.StatusCode)
 		}
 
-		return errors.New(string(body))
+		return fmt.Errorf("non success status code: %d; with body: %s", res.StatusCode, body)
 	}
 
 	return nil

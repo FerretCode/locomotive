@@ -62,7 +62,7 @@ func main() {
 			case log := <-logTrack:
 				jsonLog, err := logline.ReconstructLogLine(log)
 				if err != nil {
-					logger.Stderr.Error("error recreating log to json", logger.ErrAttr(err))
+					logger.Stderr.Error("error reconstructing log to json", logger.ErrAttr(err))
 					continue
 				}
 
