@@ -87,6 +87,9 @@ func main() {
 						slog.Int64("logs_transported", logsTransported),
 					)
 				}
+
+				log = nil
+				jsonLog = nil
 			case err := <-trackError:
 				logger.Stderr.Error("error during log subscription", logger.ErrAttr(err))
 				continue

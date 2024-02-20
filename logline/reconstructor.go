@@ -27,23 +27,27 @@ func ReconstructLogLine(log *graphql.EnvironmentLog) (*[]byte, error) {
 		return nil, fmt.Errorf("failed to append metadata attribute to object: %w", err)
 	}
 
+	metadata = nil
+
 	if len(log.Attributes) > 0 {
-		for _, attr := range log.Attributes {
-			jsonObject, err = jsonparser.Set(jsonObject, unsafe.Slice(unsafe.StringData(attr.Value), len(attr.Value)), attr.Key)
+		for i := range log.Attributes {
+			jsonObject, err = jsonparser.Set(jsonObject, unsafe.Slice(unsafe.StringData(log.Attributes[i].Value), len(log.Attributes[i].Value)), log.Attributes[i].Key)
 			if err != nil {
 				return nil, fmt.Errorf("failed to append json attribute to object: %w", err)
 			}
 		}
-	} else {
-		jsonObject, err = jsonparser.Set(jsonObject, log.TimestampRaw, "time")
-		if err != nil {
-			return nil, fmt.Errorf("failed to append time attribute to object: %w", err)
-		}
 
-		jsonObject, err = jsonparser.Set(jsonObject, log.SeverityRaw, "severity")
-		if err != nil {
-			return nil, fmt.Errorf("failed to append severity attribute to object: %w", err)
-		}
+		return &jsonObject, nil
+	}
+
+	jsonObject, err = jsonparser.Set(jsonObject, log.TimestampRaw, "time")
+	if err != nil {
+		return nil, fmt.Errorf("failed to append time attribute to object: %w", err)
+	}
+
+	jsonObject, err = jsonparser.Set(jsonObject, log.SeverityRaw, "severity")
+	if err != nil {
+		return nil, fmt.Errorf("failed to append severity attribute to object: %w", err)
 	}
 
 	return &jsonObject, nil
