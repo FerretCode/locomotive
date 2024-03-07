@@ -107,8 +107,10 @@ All variables:
 
 - `REPORT_STATUS_EVERY` - Reports the status of the locomotive every 5 seconds.
   - Default: 5s.
+  - Format must be in the Golang time.DurationParse format
+      - e.x. 5h0m0s or 5s or 2m30s
 
-- `MaxErrAccumulations` - The maximum number of errors to occur before exiting.
+- `MAX_ERR_ACCUMULATIONS` - The maximum number of errors to occur before exiting.
   - Default: 10.
 
 - `LOGS_FILTER` - Global log filter.
