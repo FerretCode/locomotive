@@ -1,49 +1,103 @@
 package webhook
 
 import (
-	"bytes"
-	"fmt"
-	"io"
-	"net/http"
-	"slices"
+	"log/slog"
+	"sync"
+	"sync/atomic"
 
 	"github.com/ferretcode/locomotive/config"
+	"github.com/ferretcode/locomotive/logger"
+	"github.com/ferretcode/locomotive/railway"
+	"github.com/ferretcode/locomotive/webhook/discord"
+	"github.com/ferretcode/locomotive/webhook/generic"
 )
 
-var acceptedStatusCodes = []int{
-	http.StatusOK,
-	http.StatusNoContent,
-	http.StatusAccepted,
-	http.StatusCreated,
+func SendGenericWebhook(logs []railway.EnvironmentLog, cfg *config.Config) error {
+	return generic.SendWebhook(logs, cfg, client)
 }
 
-func SendGenericWebhook(jsonLog *[]byte, cfg *config.Config) (err error) {
-	req, err := http.NewRequest(http.MethodPost, cfg.IngestUrl, bytes.NewReader(*jsonLog))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
+func SendDiscordWebhook(logs []railway.EnvironmentLog, cfg *config.Config) error {
+	return discord.SendWebhook(logs, cfg, client)
+}
 
-	req.Header.Add("Content-Type", "application/x-ndjson")
+func SendWebhooks(logs []railway.EnvironmentLog, cfg *config.Config) (int64, []error) {
+	logsTransported := atomic.Int64{}
 
-	for key, value := range cfg.AdditionalHeaders {
-		req.Header.Set(key, value)
-	}
+	errChan := make(chan error)
+	defer close(errChan)
 
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send webhook request: %w", err)
-	}
+	errors := []error{}
 
-	defer res.Body.Close()
+	wg := sync.WaitGroup{}
 
-	if !slices.Contains(acceptedStatusCodes, res.StatusCode) {
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			return fmt.Errorf("non success status code: %d", res.StatusCode)
+	go func() {
+		for err := range errChan {
+			errors = append(errors, err)
+			wg.Done()
 		}
+	}()
 
-		return fmt.Errorf("non success status code: %d; with body: %s", res.StatusCode, body)
+	if cfg.DiscordWebhookUrl != "" {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			filteredLogs := railway.FilterLogs(logs, cfg.LogsFilterDiscord)
+
+			logsLen, filteredLogsLen := len(logs), len(filteredLogs)
+
+			if logsLen > filteredLogsLen {
+				logger.Stdout.Debug("discord logs filtered",
+					slog.Int("amount filtered", logsLen-filteredLogsLen),
+					slog.Int("logs pre filter", logsLen),
+					slog.Int("logs post filter", filteredLogsLen),
+				)
+			}
+
+			err := SendDiscordWebhook(filteredLogs, cfg)
+			if err != nil {
+				errChan <- err
+				wg.Add(1)
+			}
+
+			if err == nil {
+				logsTransported.Add(int64(filteredLogsLen))
+			}
+		}()
 	}
 
-	return nil
+	if cfg.IngestUrl != "" {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			filteredLogs := railway.FilterLogs(logs, cfg.LogsFilterWebhook)
+
+			logsLen, filteredLogsLen := len(logs), len(filteredLogs)
+
+			if logsLen > filteredLogsLen {
+				logger.Stdout.Debug("webhook logs filtered",
+					slog.Int("amount filtered", logsLen-filteredLogsLen),
+					slog.Int("logs pre filter", logsLen),
+					slog.Int("logs post filter", filteredLogsLen),
+				)
+			}
+
+			err := SendGenericWebhook(filteredLogs, cfg)
+			if err != nil {
+				errChan <- err
+				wg.Add(1)
+			}
+
+			if err == nil {
+				logsTransported.Add(int64(filteredLogsLen))
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	return logsTransported.Load(), errors
 }

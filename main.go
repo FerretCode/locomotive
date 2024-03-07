@@ -4,12 +4,15 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"runtime"
+	"sync/atomic"
 	"syscall"
+	"time"
 
 	"github.com/ferretcode/locomotive/config"
-	"github.com/ferretcode/locomotive/graphql"
 	"github.com/ferretcode/locomotive/logger"
-	"github.com/ferretcode/locomotive/logline"
+	"github.com/ferretcode/locomotive/railway"
+	"github.com/ferretcode/locomotive/util"
 	"github.com/ferretcode/locomotive/webhook"
 	"github.com/joho/godotenv"
 )
@@ -32,7 +35,7 @@ func main() {
 
 	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
 
-	gqlClient, err := graphql.NewClient(&graphql.GraphQLClient{
+	gqlClient, err := railway.NewClient(&railway.GraphQLClient{
 		AuthToken:           cfg.RailwayApiKey,
 		BaseURL:             "https://backboard.railway.app/graphql/v2",
 		BaseSubscriptionURL: "wss://backboard.railway.app/graphql/internal",
@@ -42,10 +45,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	logTrack := make(chan *graphql.EnvironmentLog)
+	logTrack := make(chan []railway.EnvironmentLog)
 	trackError := make(chan error)
-
-	var logsTransported int64
 
 	go func() {
 		if err := gqlClient.SubscribeToLogs(logTrack, trackError, cfg); err != nil {
@@ -54,45 +55,73 @@ func main() {
 		}
 	}()
 
+	var (
+		logsTransported atomic.Int64
+
+		errAccumulation int
+	)
+
+	go func() {
+		t := time.NewTicker(cfg.ReportStatusEvery)
+		defer t.Stop()
+
+		for range t.C {
+			logsSent := logsTransported.Load()
+
+			if logsSent == 0 {
+				continue
+			}
+
+			statusLog := logger.Stdout.With(slog.Int64("logs_transported", logsSent))
+
+			if logger.StdoutLvl.Level() == slog.LevelDebug {
+				memStats := &runtime.MemStats{}
+				runtime.ReadMemStats(memStats)
+
+				statusLog = statusLog.With(
+					slog.String("total_alloc", util.ByteCountIEC(memStats.TotalAlloc)),
+					slog.String("heap_alloc", util.ByteCountIEC(memStats.HeapAlloc)),
+					slog.String("heap_in_use", util.ByteCountIEC(memStats.HeapInuse)),
+					slog.String("stack_in_use", util.ByteCountIEC(memStats.StackInuse)),
+					slog.String("other_sys", util.ByteCountIEC(memStats.OtherSys)),
+					slog.String("sys", util.ByteCountIEC(memStats.Sys)),
+				)
+			}
+
+			statusLog.Info("The locomotive is chugging along...")
+		}
+	}()
+
 	go func() {
 		for {
 			select {
 			case <-done:
 				os.Exit(0)
-			case log := <-logTrack:
-				jsonLog, err := logline.ReconstructLogLine(log)
-				if err != nil {
-					logger.Stderr.Error("error reconstructing log to json", logger.ErrAttr(err))
+			case logs := <-logTrack:
+				logsSent, errors := webhook.SendWebhooks(logs, cfg)
+				if errorsLen := len(errors); errorsLen > 0 {
+					logger.Stderr.Error("error sending webhook(s)", logger.ErrorsAttr(errors...))
+
+					errAccumulation = errAccumulation + errorsLen
+
+					if errAccumulation > cfg.MaxErrAccumulations {
+						os.Exit(1)
+					}
+
 					continue
 				}
 
-				if cfg.DiscordWebhookUrl != "" {
-					if err := webhook.SendDiscordWebhook(jsonLog, log, true, cfg); err != nil {
-						logger.Stderr.Error("error sending Discord webhook", logger.ErrAttr(err))
-						continue
-					}
-				}
+				logsTransported.Add(logsSent)
 
-				if cfg.IngestUrl != "" {
-					if err := webhook.SendGenericWebhook(jsonLog, cfg); err != nil {
-						logger.Stderr.Error("error sending generic webhook", logger.ErrAttr(err))
-						continue
-					}
-				}
-
-				logsTransported++
-
-				if logsTransported == 1 || logsTransported%cfg.ReportStatusEvery == 0 {
-					logger.Stdout.Info("The locomotive is chugging along...",
-						slog.Int64("logs_transported", logsTransported),
-					)
-				}
-
-				log = nil
-				jsonLog = nil
+				errAccumulation = 0
 			case err := <-trackError:
 				logger.Stderr.Error("error during log subscription", logger.ErrAttr(err))
-				continue
+
+				errAccumulation++
+
+				if errAccumulation > cfg.MaxErrAccumulations {
+					os.Exit(1)
+				}
 			}
 		}
 	}()

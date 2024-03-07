@@ -1,6 +1,6 @@
-package graphql
+package railway
 
-//yucky
+// yucky
 var projectQuery = `query project($id: String!) {
 		project(id: $id) {
 		  id

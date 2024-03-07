@@ -1,4 +1,4 @@
-package graphql
+package railway
 
 import (
 	"errors"
@@ -23,20 +23,9 @@ func NewClient(gqlConfig *GraphQLClient) (*GraphQLClient, error) {
 		},
 	}
 
-	config := &GraphQLClient{}
-
 	if gqlConfig.BaseURL != "" {
-		config.client = graphql.NewClient(gqlConfig.BaseURL, httpClient)
+		gqlConfig.client = graphql.NewClient(gqlConfig.BaseURL, httpClient)
 	}
 
-	if gqlConfig.BaseSubscriptionURL != "" {
-		config.subscriptionClient = graphql.NewSubscriptionClient(gqlConfig.BaseSubscriptionURL).
-			WithWebSocketOptions(graphql.WebsocketOptions{
-				HTTPClient: httpClient,
-			})
-
-		config.subscriptionClient.WithProtocol(graphql.GraphQLWS)
-	}
-
-	return config, nil
+	return gqlConfig, nil
 }
