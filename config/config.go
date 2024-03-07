@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/caarlos0/env/v10"
 )
@@ -32,13 +33,20 @@ func (h *AdditionalHeaders) UnmarshalText(envByte []byte) error {
 }
 
 type Config struct {
-	RailwayApiKey     string            `env:"RAILWAY_API_KEY,required"`
-	EnvironmentId     string            `env:"ENVIRONMENT_ID,required"`
-	Train             []string          `env:"TRAIN,required" envSeparator:","`
-	LogsFilter        []string          `env:"LOGS_FILTER" envSeparator:","`
+	RailwayApiKey string   `env:"RAILWAY_API_KEY,required"`
+	EnvironmentId string   `env:"ENVIRONMENT_ID,required"`
+	Train         []string `env:"TRAIN,required" envSeparator:","`
+
 	DiscordWebhookUrl string            `env:"DISCORD_WEBHOOK_URL"`
 	IngestUrl         string            `env:"INGEST_URL"`
 	AdditionalHeaders AdditionalHeaders `env:"ADDITIONAL_HEADERS"`
+
+	ReportStatusEvery   time.Duration `env:"REPORT_STATUS_EVERY" envDefault:"5s"`
+	MaxErrAccumulations int           `env:"MAX_ERR_ACCUMULATIONS" envDefault:"10"`
+
+	LogsFilterGlobal  []string `env:"LOGS_FILTER" envSeparator:","`
+	LogsFilterDiscord []string `env:"LOGS_FILTER_DISCORD" envSeparator:","`
+	LogsFilterWebhook []string `env:"LOGS_FILTER_WEBHOOK" envSeparator:","`
 }
 
 func GetConfig() (*Config, error) {
@@ -50,6 +58,10 @@ func GetConfig() (*Config, error) {
 
 	if config.DiscordWebhookUrl != "" && !strings.HasPrefix(config.DiscordWebhookUrl, "https://discord.com/api/webhooks/") {
 		return nil, errors.New("invalid Discord webhook URL")
+	}
+
+	if config.DiscordWebhookUrl == "" && config.IngestUrl == "" {
+		return nil, errors.New("specify either a discord webhook url or an ingest url")
 	}
 
 	return &config, nil

@@ -1,4 +1,4 @@
-package graphql
+package railway
 
 import "net/http"
 

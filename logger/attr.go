@@ -6,6 +6,10 @@ import (
 )
 
 func ErrAttr(err error) slog.Attr {
+	if err == nil {
+		return slog.String("err", "<nil>")
+	}
+
 	return slog.String("err", strings.TrimSpace(err.Error()))
 }
 

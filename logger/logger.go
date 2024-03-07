@@ -2,12 +2,17 @@ package logger
 
 import (
 	"os"
+	"strconv"
 
 	"log/slog"
 )
 
 var (
-	stdoutHandler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{})
+	StdoutLvl = slog.LevelVar{}
+
+	stdoutHandler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: &StdoutLvl,
+	})
 	//enable source
 	stdoutHandlerWithSource = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
@@ -29,3 +34,12 @@ var (
 	// sends logs to stderr with source info
 	StderrWithSource = slog.New(stderrHandlerWithSource)
 )
+
+func init() {
+	StdoutLvl.Set(slog.LevelInfo)
+
+	if b, _ := strconv.ParseBool(os.Getenv("DEBUG")); b {
+		StdoutLvl.Set(slog.LevelDebug)
+		Stdout.Debug("debug logging enabled")
+	}
+}
