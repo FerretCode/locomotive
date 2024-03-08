@@ -1,6 +1,7 @@
 package webhook
 
 import (
+	"fmt"
 	"log/slog"
 	"sync"
 	"sync/atomic"
@@ -57,7 +58,7 @@ func SendWebhooks(logs []railway.EnvironmentLog, cfg *config.Config) (int64, []e
 
 			err := SendDiscordWebhook(filteredLogs, cfg)
 			if err != nil {
-				errChan <- err
+				errChan <- fmt.Errorf("discord error: %w", err)
 				wg.Add(1)
 			}
 
@@ -87,7 +88,7 @@ func SendWebhooks(logs []railway.EnvironmentLog, cfg *config.Config) (int64, []e
 
 			err := SendGenericWebhook(filteredLogs, cfg)
 			if err != nil {
-				errChan <- err
+				errChan <- fmt.Errorf("ingest error: %w", err)
 				wg.Add(1)
 			}
 
