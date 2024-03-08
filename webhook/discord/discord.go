@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -12,26 +13,37 @@ import (
 	"github.com/ferretcode/locomotive/railway"
 )
 
+const descriptionFormat = "```%s```\n```%s```"
+
 func SendWebhook(logs []railway.EnvironmentLog, cfg *config.Config, client *http.Client) error {
 	em := []embed{}
 
 	for i := range logs {
 		rawLog, err := logline.ReconstructLogLine(logs[i])
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to reconstruct log object: %w", err)
+		}
+
+		var description string
+
+		if cfg.DiscordPrettyJson {
+			buf := &bytes.Buffer{}
+
+			if err := json.Indent(buf, rawLog, "", "  "); err != nil {
+				return fmt.Errorf("failed to indent json log object: %w", err)
+			}
+
+			description = fmt.Sprintf(descriptionFormat, logs[i].Message, buf)
+		} else {
+			description = fmt.Sprintf(descriptionFormat, logs[i].Message, rawLog)
 		}
 
 		em = append(em, embed{
 			Title:       strings.ToUpper(logs[i].Severity),
 			Color:       getColor(logs[i].Severity),
-			Description: fmt.Sprintf("```%s```", logs[i].Message),
-			Fields: []field{{
-				Name:   "⠀",
-				Value:  fmt.Sprintf("```%s```", rawLog),
-				Inline: false,
-			}}},
-		)
-
+			Description: description,
+			Timestamp:   logs[i].Timestamp,
+		})
 	}
 
 	hook := hook{
@@ -41,25 +53,30 @@ func SendWebhook(logs []railway.EnvironmentLog, cfg *config.Config, client *http
 
 	payload, err := json.Marshal(&hook)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal hook: %w", err)
 	}
 
 	req, err := http.NewRequest(http.MethodPost, cfg.DiscordWebhookUrl, bytes.NewReader(payload))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create new request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
-	resp, err := http.DefaultClient.Do(req)
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to send webhook: %w", err)
 	}
 
-	defer resp.Body.Close()
+	defer res.Body.Close()
 
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return fmt.Errorf("non success status code: %d", resp.StatusCode)
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return fmt.Errorf("non success status code: %d", res.StatusCode)
+		}
+
+		return fmt.Errorf("non success status code: %d; with body: %s", res.StatusCode, body)
 	}
 
 	return nil
