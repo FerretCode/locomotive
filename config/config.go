@@ -37,7 +37,9 @@ type Config struct {
 	EnvironmentId string   `env:"ENVIRONMENT_ID,required"`
 	Train         []string `env:"TRAIN,required" envSeparator:","`
 
-	DiscordWebhookUrl string            `env:"DISCORD_WEBHOOK_URL"`
+	DiscordWebhookUrl string `env:"DISCORD_WEBHOOK_URL"`
+	DiscordPrettyJson bool   `env:"DISCORD_PRETTY_JSON" envDefault:"false"`
+
 	IngestUrl         string            `env:"INGEST_URL"`
 	AdditionalHeaders AdditionalHeaders `env:"ADDITIONAL_HEADERS"`
 

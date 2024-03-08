@@ -91,10 +91,11 @@ All variables:
 
 - `TRAIN` - The ID of the service you want to monitor.
   - Supports multiple service Ids, separated with a comma.
-  - Either ALL, INFO, ERROR, WARN or any custom severity.
 
 - `DISCORD_WEBHOOK_URL` - The Discord webhook URL to send logs to.
   - Optional.
+
+- `DISCORD_PRETTY_JSON` - Pretty print the RAW JSON object in Discord embeds.
 
 - `INGEST_URL` - The URL to send a generic request to.
   - Example for Axiom: `INGEST_URL=https://api.axiom.co/v1/datasets/DATASET_NAME/ingest`
@@ -108,22 +109,19 @@ All variables:
 - `REPORT_STATUS_EVERY` - Reports the status of the locomotive every 5 seconds.
   - Default: 5s.
   - Format must be in the Golang time.DurationParse format
-      - e.x. 5h0m0s or 5s or 2m30s
+      - E.g. 10h, 5h, 10m, 5m 5s
 
 - `MAX_ERR_ACCUMULATIONS` - The maximum number of errors to occur before exiting.
   - Default: 10.
 
 - `LOGS_FILTER` - Global log filter.
+  - Either ALL, INFO, ERROR, WARN or any custom combination of severity / level.
   - Accepts multiple values, separated with a comma.
   - Defaults to allowing all log levels.
   - Optional.
 
 - `LOGS_FILTER_DISCORD` - Discord specific log filter.
-  - Accepts multiple values, separated with a comma.
-  - Defaults to allowing all log levels.
-  - Optional.
+  - Same options and behavior as the global log filter.
 
 - `LOGS_FILTER_WEBHOOK` - Ingest URL specific log filter.
-  - Accepts multiple values, separated with a comma.
-  - Defaults to allowing all log levels.
-  - Optional.
+  - Same options and behavior as the global log filter.
