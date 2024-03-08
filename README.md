@@ -95,6 +95,8 @@ All variables:
 - `DISCORD_WEBHOOK_URL` - The Discord webhook URL to send logs to.
   - Optional.
 
+- `DISCORD_PRETTY_JSON` - Pretty print the RAW JSON object in Discord embeds.
+
 - `INGEST_URL` - The URL to send a generic request to.
   - Example for Axiom: `INGEST_URL=https://api.axiom.co/v1/datasets/DATASET_NAME/ingest`
   - Example for BetterStack: `INGEST_URL=https://in.logs.betterstack.com`
