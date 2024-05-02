@@ -25,6 +25,7 @@ For Plaintext logs
       "serviceName": "Autorack"
     },
     "message": "Hello, World!",
+    "level": "info",
     "severity": "info",
     "time": "2020-05-22T21:27:33Z",
     "_time": "2020-05-22T21:27:33Z",
@@ -50,7 +51,8 @@ For Structured JSON logs
       "serviceId": "55b1755f-f2c6-4f24-8d51-0ed3754b253e",
       "serviceName": "Superliner"
     },
-    "level": "INFO",
+    "level": "info",
+    "severity": "info",
     "message": "Hello, World!",
     "example_string": "foo bar",
     "example_int": 12345678,
