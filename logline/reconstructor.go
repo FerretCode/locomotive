@@ -55,39 +55,28 @@ func ReconstructLogLine(log railway.EnvironmentLog) ([]byte, error) {
 		return nil, fmt.Errorf("failed to append metadata attribute to object: %w", err)
 	}
 
-	if len(log.Attributes) > 0 {
-		for i := range log.Attributes {
-			jsonObject, err = jsonparser.Set(jsonObject, []byte(log.Attributes[i].Value), log.Attributes[i].Key)
-			if err != nil {
-				return nil, fmt.Errorf("failed to append json attribute to object: %w", err)
-			}
+	for i := range log.Attributes {
+		jsonObject, err = jsonparser.Set(jsonObject, []byte(log.Attributes[i].Value), log.Attributes[i].Key)
+		if err != nil {
+			return nil, fmt.Errorf("failed to append json attribute to object: %w", err)
 		}
+	}
 
-		// add the timestamps that common logging services like betterstack and axiom expect
-		// ref: https://betterstack.com/docs/logs/http-rest-api/#sending-timestamps
-		// ref: https://axiom.co/docs/send-data/ingest#timestamp-field
-		// use the first found timestamp from structured logging to set all other common timestamp attributes
-		if value, hasKey := railway.AttributesHasKeys(log.Attributes, commonTimeStampAttributes); hasKey {
-			timeStamp := []byte(value)
+	// check for a timestamp attribute
+	timeStampAttr, hasTimeStampAttr := railway.AttributesHasKeys(log.Attributes, commonTimeStampAttributes)
 
-			for i := range commonTimeStampAttributes {
-				jsonObject, err = jsonparser.Set(jsonObject, timeStamp, commonTimeStampAttributes[i])
-				if err != nil {
-					return nil, fmt.Errorf("failed to append %s attribute to object: %w", commonTimeStampAttributes[i], err)
-				}
-			}
-		}
+	var timeStamp []byte
 
-		return jsonObject, nil
+	// Use timestamp from structured logging if available, otherwise fallback to timestamp set by Railway
+	if hasTimeStampAttr {
+		timeStamp = []byte(timeStampAttr)
+	} else {
+		timeStamp = []byte(strconv.Quote(log.Timestamp.Format(time.RFC3339Nano)))
 	}
 
 	// add the timestamps that common logging services like betterstack and axiom expect
 	// ref: https://betterstack.com/docs/logs/http-rest-api/#sending-timestamps
 	// ref: https://axiom.co/docs/send-data/ingest#timestamp-field
-	// use the timestamp set by Railway to set all other common timestamp attributes
-
-	timeStamp := []byte(strconv.Quote(log.Timestamp.Format(time.RFC3339Nano)))
-
 	for i := range commonTimeStampAttributes {
 		jsonObject, err = jsonparser.Set(jsonObject, timeStamp, commonTimeStampAttributes[i])
 		if err != nil {
@@ -95,6 +84,8 @@ func ReconstructLogLine(log railway.EnvironmentLog) ([]byte, error) {
 		}
 	}
 
+	// set severity in all situations for backwards compatibility
+	// railway already normilizes the level attribute into the severity field, or vice versa
 	jsonObject, err = jsonparser.Set(jsonObject, []byte(strconv.Quote(log.Severity)), "severity")
 	if err != nil {
 		return nil, fmt.Errorf("failed to append severity attribute to object: %w", err)
