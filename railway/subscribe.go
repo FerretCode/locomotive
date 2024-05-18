@@ -166,12 +166,16 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- []EnvironmentLog, trackE
 		_, logPayload, err := safeConnRead(conn, ctx)
 		if err != nil {
 			if errAccumulation > cfg.MaxErrAccumulations {
+				return errors.New("too many resubscription tries")
+			}
+
+			if errAccumulation > cfg.MaxErrAccumulations {
 				return err
 			}
 
-			safeConnCloseNow(conn)
-
 			logger.Stdout.Debug("resubscribing", slog.Any("reason", err))
+
+			safeConnCloseNow(conn)
 
 			conn, err = g.createSubscription(ctx, cfg)
 			if err != nil {
@@ -184,10 +188,10 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- []EnvironmentLog, trackE
 				continue
 			}
 
+			errAccumulation++
+
 			continue
 		}
-
-		errAccumulation = 0
 
 		logs := &LogPayloadResponse{}
 
@@ -195,6 +199,33 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- []EnvironmentLog, trackE
 			trackError <- err
 			continue
 		}
+
+		if logs.Type != TypeNext {
+			if errAccumulation > cfg.MaxErrAccumulations {
+				return errors.New("too many resubscription tries")
+			}
+
+			logger.Stdout.Debug("resubscribing", slog.String("reason", fmt.Sprintf("log type not next: %s", logs.Type)))
+
+			safeConnCloseNow(conn)
+
+			conn, err = g.createSubscription(ctx, cfg)
+			if err != nil {
+				errAccumulation++
+
+				if errAccumulation > cfg.MaxErrAccumulations {
+					return err
+				}
+
+				continue
+			}
+
+			errAccumulation++
+
+			continue
+		}
+
+		errAccumulation = 0
 
 		filteredLogs := []EnvironmentLog{}
 
@@ -213,6 +244,7 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- []EnvironmentLog, trackE
 
 			// on first subscription skip logs if they where logged before the first subscription, on resubscription skip logs if they where already processed
 			if logs.Payload.Data.EnvironmentLogs[i].Timestamp.Before(LogTime) || LogTime == logs.Payload.Data.EnvironmentLogs[i].Timestamp {
+				// logger.Stdout.Debug("skipping stale log message")
 				continue
 			}
 
@@ -252,6 +284,7 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- []EnvironmentLog, trackE
 		}
 
 		if len(filteredLogs) == 0 {
+			// logger.Stdout.Debug("continue 3")
 			continue
 		}
 

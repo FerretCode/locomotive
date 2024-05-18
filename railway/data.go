@@ -6,12 +6,20 @@ import (
 	"github.com/hasura/go-graphql-client"
 )
 
+type LogType string
+
+const (
+	TypeNext     LogType = "next"
+	TypeComplete LogType = "complete"
+)
+
 type LogPayloadResponse struct {
 	Payload struct {
 		Data struct {
 			EnvironmentLogs []EnvironmentLog `json:"environmentLogs"`
 		} `json:"data"`
 	} `json:"payload"`
+	Type LogType `json:"type"`
 }
 
 type EnvironmentLog struct {
