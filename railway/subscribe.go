@@ -166,7 +166,6 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- []EnvironmentLog, trackE
 		_, logPayload, err := safeConnRead(conn, ctx)
 		if err != nil {
 			if errAccumulation > cfg.MaxErrAccumulations {
-				logger.Stdout.Debug("err 1")
 				return err
 			}
 
