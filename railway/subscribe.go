@@ -166,6 +166,10 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- []EnvironmentLog, trackE
 		_, logPayload, err := safeConnRead(conn, ctx)
 		if err != nil {
 			if errAccumulation > cfg.MaxErrAccumulations {
+				return errors.New("too many resubscription tries")
+			}
+
+			if errAccumulation > cfg.MaxErrAccumulations {
 				return err
 			}
 
@@ -184,6 +188,8 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- []EnvironmentLog, trackE
 				continue
 			}
 
+			errAccumulation++
+
 			continue
 		}
 
@@ -195,6 +201,10 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- []EnvironmentLog, trackE
 		}
 
 		if logs.Type != TypeNext {
+			if errAccumulation > cfg.MaxErrAccumulations {
+				return errors.New("too many resubscription tries")
+			}
+
 			logger.Stdout.Debug("resubscribing", slog.String("reason", fmt.Sprintf("log type not next: %s", logs.Type)))
 
 			safeConnCloseNow(conn)
@@ -209,6 +219,8 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- []EnvironmentLog, trackE
 
 				continue
 			}
+
+			errAccumulation++
 
 			continue
 		}
