@@ -53,6 +53,8 @@ func main() {
 			logger.Stderr.Error("error subscribing to logs", logger.ErrAttr(err))
 			os.Exit(1)
 		}
+
+		logger.Stdout.Debug("log subscription ended")
 	}()
 
 	var (
