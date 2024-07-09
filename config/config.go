@@ -46,6 +46,8 @@ type Config struct {
 	ReportStatusEvery   time.Duration `env:"REPORT_STATUS_EVERY" envDefault:"5s"`
 	MaxErrAccumulations int           `env:"MAX_ERR_ACCUMULATIONS" envDefault:"10"`
 
+	KeywordFilter []string `env:"KEYWORD_FILTER" envSeparator:","`
+
 	LogsFilterGlobal  []string `env:"LOGS_FILTER" envSeparator:","`
 	LogsFilterDiscord []string `env:"LOGS_FILTER_DISCORD" envSeparator:","`
 	LogsFilterWebhook []string `env:"LOGS_FILTER_WEBHOOK" envSeparator:","`

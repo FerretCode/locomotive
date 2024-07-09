@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/ferretcode/locomotive/config"
@@ -233,6 +234,11 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- []EnvironmentLog, trackE
 			// skip logs with empty messages
 			if logs.Payload.Data.EnvironmentLogs[i].Message == "" {
 				logger.Stdout.Debug("skipping blank log message")
+				continue
+			}
+
+			// skip logs that don't match our keyword filters
+			if sort.SearchStrings(cfg.KeywordFilter, logs.Payload.Data.EnvironmentLogs[i].Message) == -1 {
 				continue
 			}
 
