@@ -17,7 +17,7 @@ import (
 	"nhooyr.io/websocket"
 )
 
-func (g *GraphQLClient) buildMetadataMap(cfg *config.Config) (map[string]string, error) {
+func (g *GraphQLClient) buildMetadataMap(ctx context.Context, cfg *config.Config) (map[string]string, error) {
 	if g.client == nil {
 		return nil, errors.New("client is nil")
 	}
@@ -28,7 +28,7 @@ func (g *GraphQLClient) buildMetadataMap(cfg *config.Config) (map[string]string,
 		"id": cfg.EnvironmentId,
 	}
 
-	if err := g.client.Exec(context.Background(), environmentQuery, &environment, variables); err != nil {
+	if err := g.client.Exec(ctx, environmentQuery, &environment, variables); err != nil {
 		return nil, err
 	}
 
@@ -38,7 +38,7 @@ func (g *GraphQLClient) buildMetadataMap(cfg *config.Config) (map[string]string,
 		"id": environment.Environment.ProjectID,
 	}
 
-	if err := g.client.Exec(context.Background(), projectQuery, &project, variables); err != nil {
+	if err := g.client.Exec(ctx, projectQuery, &project, variables); err != nil {
 		return nil, err
 	}
 
@@ -112,7 +112,7 @@ func (g *GraphQLClient) createSubscription(ctx context.Context, cfg *config.Conf
 		Subprotocols: []string{"graphql-transport-ws"},
 	}
 
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), (10 * time.Second))
+	ctxTimeout, cancel := context.WithTimeout(ctx, (10 * time.Second))
 	defer cancel()
 
 	c, _, err := websocket.Dial(ctxTimeout, g.BaseSubscriptionURL, opts)
@@ -142,14 +142,11 @@ func (g *GraphQLClient) createSubscription(ctx context.Context, cfg *config.Conf
 	return c, nil
 }
 
-func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- []EnvironmentLog, trackError chan<- error, cfg *config.Config) error {
-	metadataMap, err := g.buildMetadataMap(cfg)
+func (g *GraphQLClient) SubscribeToLogs(ctx context.Context, logTrack chan<- []EnvironmentLog, cfg *config.Config) error {
+	metadataMap, err := g.buildMetadataMap(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("error building metadata map: %w", err)
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	conn, err := g.createSubscription(ctx, cfg)
 	if err != nil {
@@ -160,35 +157,17 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- []EnvironmentLog, trackE
 
 	LogTime := time.Now().UTC()
 
-	var errAccumulation int
-
 	for {
 		_, logPayload, err := safeConnRead(conn, ctx)
 		if err != nil {
-			if errAccumulation > cfg.MaxErrAccumulations {
-				return errors.New("too many resubscription tries")
-			}
-
-			if errAccumulation > cfg.MaxErrAccumulations {
-				return err
-			}
-
 			logger.Stdout.Debug("resubscribing", slog.Any("reason", err))
 
 			safeConnCloseNow(conn)
 
 			conn, err = g.createSubscription(ctx, cfg)
 			if err != nil {
-				errAccumulation++
-
-				if errAccumulation > cfg.MaxErrAccumulations {
-					return err
-				}
-
-				continue
+				return err
 			}
-
-			errAccumulation++
 
 			continue
 		}
@@ -196,36 +175,21 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- []EnvironmentLog, trackE
 		logs := &LogPayloadResponse{}
 
 		if err := json.Unmarshal(logPayload, &logs); err != nil {
-			trackError <- err
-			continue
+			return err
 		}
 
 		if logs.Type != TypeNext {
-			if errAccumulation > cfg.MaxErrAccumulations {
-				return errors.New("too many resubscription tries")
-			}
-
 			logger.Stdout.Debug("resubscribing", slog.String("reason", fmt.Sprintf("log type not next: %s", logs.Type)))
 
 			safeConnCloseNow(conn)
 
 			conn, err = g.createSubscription(ctx, cfg)
 			if err != nil {
-				errAccumulation++
-
-				if errAccumulation > cfg.MaxErrAccumulations {
-					return err
-				}
-
-				continue
+				return err
 			}
-
-			errAccumulation++
 
 			continue
 		}
-
-		errAccumulation = 0
 
 		filteredLogs := []EnvironmentLog{}
 
@@ -236,9 +200,9 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- []EnvironmentLog, trackE
 				continue
 			}
 
-			// skip build logs, build logs don't have deployment ids
-			if logs.Payload.Data.EnvironmentLogs[i].Tags.DeploymentID == "" {
-				logger.Stdout.Debug("skipping build log message")
+			// skip container logs, container logs don't have deployment instance ids
+			if logs.Payload.Data.EnvironmentLogs[i].Tags.DeploymentInstanceID == "" {
+				logger.Stdout.Debug("skipping container log message")
 				continue
 			}
 
@@ -284,7 +248,6 @@ func (g *GraphQLClient) SubscribeToLogs(logTrack chan<- []EnvironmentLog, trackE
 		}
 
 		if len(filteredLogs) == 0 {
-			// logger.Stdout.Debug("continue 3")
 			continue
 		}
 

@@ -43,8 +43,7 @@ type Config struct {
 	IngestUrl         string            `env:"INGEST_URL"`
 	AdditionalHeaders AdditionalHeaders `env:"ADDITIONAL_HEADERS"`
 
-	ReportStatusEvery   time.Duration `env:"REPORT_STATUS_EVERY" envDefault:"5s"`
-	MaxErrAccumulations int           `env:"MAX_ERR_ACCUMULATIONS" envDefault:"10"`
+	ReportStatusEvery time.Duration `env:"REPORT_STATUS_EVERY" envDefault:"10s"`
 
 	LogsFilterGlobal  []string `env:"LOGS_FILTER" envSeparator:","`
 	LogsFilterDiscord []string `env:"LOGS_FILTER_DISCORD" envSeparator:","`

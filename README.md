@@ -113,9 +113,6 @@ All variables:
   - Format must be in the Golang time.DurationParse format
       - E.g. 10h, 5h, 10m, 5m 5s
 
-- `MAX_ERR_ACCUMULATIONS` - The maximum number of errors to occur before exiting.
-  - Default: 10.
-
 - `LOGS_FILTER` - Global log filter.
   - Either ALL, INFO, ERROR, WARN or any custom combination of severity / level.
   - Accepts multiple values, separated with a comma.

@@ -8,5 +8,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hasura/go-graphql-client v0.12.1
 	github.com/joho/godotenv v1.5.1
+	github.com/sethvargo/go-retry v0.3.0
 	nhooyr.io/websocket v1.8.10
 )
