@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -15,6 +16,7 @@ import (
 	"github.com/ferretcode/locomotive/util"
 	"github.com/ferretcode/locomotive/webhook"
 	"github.com/joho/godotenv"
+	"github.com/sethvargo/go-retry"
 )
 
 func main() {
@@ -46,22 +48,30 @@ func main() {
 	}
 
 	logTrack := make(chan []railway.EnvironmentLog)
-	trackError := make(chan error)
+
+	ctx := context.Background()
 
 	go func() {
-		if err := gqlClient.SubscribeToLogs(logTrack, trackError, cfg); err != nil {
-			logger.Stderr.Error("error subscribing to logs", logger.ErrAttr(err))
-			os.Exit(1)
+		b := retry.NewFibonacci(100 * time.Millisecond)
+
+		b = retry.WithCappedDuration((5 * time.Second), b)
+
+		if err := retry.Do(ctx, b, func(ctx context.Context) error {
+			if err := gqlClient.SubscribeToLogs(ctx, logTrack, cfg); err != nil {
+				logger.Stderr.Error("error subscribing to logs", logger.ErrAttr(err))
+
+				return retry.RetryableError(err)
+			}
+
+			return nil
+		}); err != nil {
+			logger.Stderr.Error("fatal error subscribing to logs", logger.ErrAttr(err))
 		}
 
 		logger.Stdout.Debug("log subscription ended")
 	}()
 
-	var (
-		logsTransported atomic.Int64
-
-		errAccumulation int
-	)
+	var logsTransported atomic.Int64
 
 	go func() {
 		t := time.NewTicker(cfg.ReportStatusEvery)
@@ -104,26 +114,10 @@ func main() {
 				if errorsLen := len(errors); errorsLen > 0 {
 					logger.Stderr.Error("error sending webhook(s)", logger.ErrorsAttr(errors...))
 
-					errAccumulation = errAccumulation + errorsLen
-
-					if errAccumulation > cfg.MaxErrAccumulations {
-						os.Exit(1)
-					}
-
 					continue
 				}
 
 				logsTransported.Add(logsSent)
-
-				errAccumulation = 0
-			case err := <-trackError:
-				logger.Stderr.Error("error during log subscription", logger.ErrAttr(err))
-
-				errAccumulation++
-
-				if errAccumulation > cfg.MaxErrAccumulations {
-					os.Exit(1)
-				}
 			}
 		}
 	}()
