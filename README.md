@@ -99,6 +99,15 @@ All variables:
 
 - `DISCORD_PRETTY_JSON` - Pretty print the RAW JSON object in Discord embeds.
 
+- `SLACK_WEBHOOK_URL` - The Slack webhook URL to send logs to.
+  - Optional.
+
+- `SLACK_PRETTY_JSON` - Pretty print the RAW JSON object in Slack embeds.
+
+- `SLACK_TAGS` - Tags to add to the Slack message.
+  - Supports multiple tags, separated with a comma.
+  - Optional.
+
 - `INGEST_URL` - The URL to send a generic request to.
   - Example for Axiom: `INGEST_URL=https://api.axiom.co/v1/datasets/DATASET_NAME/ingest`
   - Example for BetterStack: `INGEST_URL=https://in.logs.betterstack.com`
@@ -123,4 +132,7 @@ All variables:
   - Same options and behavior as the global log filter.
 
 - `LOGS_FILTER_WEBHOOK` - Ingest URL specific log filter.
+  - Same options and behavior as the global log filter.
+
+- `LOGS_FILTER_SLACK` - Slack specific log filter.
   - Same options and behavior as the global log filter.
