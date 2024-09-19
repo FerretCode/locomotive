@@ -53,6 +53,12 @@ type Config struct {
 	LogsFilterDiscord []string `env:"LOGS_FILTER_DISCORD" envSeparator:","`
 	LogsFilterSlack   []string `env:"LOGS_FILTER_SLACK" envSeparator:","`
 	LogsFilterWebhook []string `env:"LOGS_FILTER_WEBHOOK" envSeparator:","`
+
+	// New content filter fields
+	LogsContentFilterGlobal  string `env:"LOGS_CONTENT_FILTER"`
+	LogsContentFilterDiscord string `env:"LOGS_CONTENT_FILTER_DISCORD"`
+	LogsContentFilterSlack   string `env:"LOGS_CONTENT_FILTER_SLACK"`
+	LogsContentFilterWebhook string `env:"LOGS_CONTENT_FILTER_WEBHOOK"`
 }
 
 func GetConfig() (*Config, error) {

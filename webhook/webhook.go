@@ -49,7 +49,7 @@ func SendWebhooks(logs []railway.EnvironmentLog, cfg *config.Config) (int64, []e
 		go func() {
 			defer wg.Done()
 
-			filteredLogs := railway.FilterLogs(logs, cfg.LogsFilterDiscord)
+			filteredLogs := railway.FilterLogs(logs, cfg.LogsFilterDiscord, cfg.LogsContentFilterDiscord)
 
 			logsLen, filteredLogsLen := len(logs), len(filteredLogs)
 
@@ -79,7 +79,7 @@ func SendWebhooks(logs []railway.EnvironmentLog, cfg *config.Config) (int64, []e
 		go func() {
 			defer wg.Done()
 
-			filteredLogs := railway.FilterLogs(logs, cfg.LogsFilterSlack)
+			filteredLogs := railway.FilterLogs(logs, cfg.LogsFilterSlack, cfg.LogsContentFilterSlack)
 
 			logsLen, filteredLogsLen := len(logs), len(filteredLogs)
 
@@ -109,7 +109,7 @@ func SendWebhooks(logs []railway.EnvironmentLog, cfg *config.Config) (int64, []e
 		go func() {
 			defer wg.Done()
 
-			filteredLogs := railway.FilterLogs(logs, cfg.LogsFilterWebhook)
+			filteredLogs := railway.FilterLogs(logs, cfg.LogsFilterWebhook, cfg.LogsContentFilterWebhook)
 
 			logsLen, filteredLogsLen := len(logs), len(filteredLogs)
 
