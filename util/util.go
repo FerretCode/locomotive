@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -40,4 +41,19 @@ func IsWantedLevel(wanted []string, current string) bool {
 	}
 
 	return false
+}
+
+// New function to check if a log matches the content filter
+func MatchesContentFilter(filter string, logContent string) bool {
+	if filter == "" {
+		return true
+	}
+
+	re, err := regexp.Compile(filter)
+	if err != nil {
+		// If the regex is invalid, treat it as a plain text search
+		return strings.Contains(logContent, filter)
+	}
+
+	return re.MatchString(logContent)
 }

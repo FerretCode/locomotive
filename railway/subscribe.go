@@ -218,6 +218,12 @@ func (g *GraphQLClient) SubscribeToLogs(ctx context.Context, logTrack chan<- []E
 				continue
 			}
 
+			// skip logs that don't match our desired global content filter(s)
+			if !util.MatchesContentFilter(cfg.LogsContentFilterGlobal, logs.Payload.Data.EnvironmentLogs[i].Message) {
+				logger.Stdout.Debug("skipping undesired global log content", slog.String("content", logs.Payload.Data.EnvironmentLogs[i].Message), slog.String("filter", cfg.LogsContentFilterGlobal))
+				continue
+			}
+
 			LogTime = logs.Payload.Data.EnvironmentLogs[i].Timestamp
 
 			serviceName, ok := metadataMap[logs.Payload.Data.EnvironmentLogs[i].Tags.ServiceID]
