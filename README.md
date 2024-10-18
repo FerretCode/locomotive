@@ -99,6 +99,15 @@ All variables:
 
 - `DISCORD_PRETTY_JSON` - Pretty print the RAW JSON object in Discord embeds.
 
+- `SLACK_WEBHOOK_URL` - The Slack webhook URL to send logs to.
+  - Optional.
+
+- `SLACK_PRETTY_JSON` - Pretty print the RAW JSON object in Slack embeds.
+
+- `SLACK_TAGS` - Tags to add to the Slack message.
+  - Supports multiple tags, separated with a comma.
+  - Optional.
+
 - `INGEST_URL` - The URL to send a generic request to.
   - Example for Axiom: `INGEST_URL=https://api.axiom.co/v1/datasets/DATASET_NAME/ingest`
   - Example for BetterStack: `INGEST_URL=https://in.logs.betterstack.com`
@@ -124,3 +133,28 @@ All variables:
 
 - `LOGS_FILTER_WEBHOOK` - Ingest URL specific log filter.
   - Same options and behavior as the global log filter.
+
+- `LOGS_FILTER_SLACK` - Slack specific log filter.
+  - Same options and behavior as the global log filter.
+
+## Log Filtering
+
+You can filter logs by severity level and content using the following environment variables:
+
+### Level Filters
+- `LOGS_FILTER`: Global level filter applied to all outputs
+- `LOGS_FILTER_DISCORD`: Level filter applied to Discord output
+- `LOGS_FILTER_SLACK`: Level filter applied to Slack output
+- `LOGS_FILTER_WEBHOOK`: Level filter applied to webhook output
+
+Level filter options: ALL, INFO, ERROR, WARN, or any custom combination of severity / level.
+
+### Content Filters
+- `LOGS_CONTENT_FILTER`: Global content filter applied to all outputs
+- `LOGS_CONTENT_FILTER_DISCORD`: Content filter applied to Discord output
+- `LOGS_CONTENT_FILTER_SLACK`: Content filter applied to Slack output
+- `LOGS_CONTENT_FILTER_WEBHOOK`: Content filter applied to webhook output
+
+Content filters support regular expressions or plain text searches.
+
+Example:
