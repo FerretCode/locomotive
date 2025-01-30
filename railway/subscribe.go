@@ -194,9 +194,9 @@ func (g *GraphQLClient) SubscribeToLogs(ctx context.Context, logTrack chan<- []E
 		filteredLogs := []EnvironmentLog{}
 
 		for i := range logs.Payload.Data.EnvironmentLogs {
-			// skip logs with empty messages
-			if logs.Payload.Data.EnvironmentLogs[i].Message == "" {
-				logger.Stdout.Debug("skipping blank log message")
+			// skip logs with empty messages and no attributes
+			// we check for 1 attribute because empty logs will always have at least one attribute, the level
+			if logs.Payload.Data.EnvironmentLogs[i].Message == "" && len(logs.Payload.Data.EnvironmentLogs[i].Attributes) == 1 {
 				continue
 			}
 
