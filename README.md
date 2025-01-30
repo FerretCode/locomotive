@@ -1,6 +1,6 @@
 # locomotive
 
-A Railway sidecar service for sending webhook events when new logs are received. Supports Discord, Axiom, BetterStack and more! 
+A Railway sidecar service for sending webhook events when new logs are received. Supports Discord, Datadog, Axiom, BetterStack and more! 
 
 ## Configuration
 
@@ -100,12 +100,14 @@ All variables:
 - `DISCORD_PRETTY_JSON` - Pretty print the RAW JSON object in Discord embeds.
 
 - `INGEST_URL` - The URL to send a generic request to.
+  - Example for Datadog: `INGEST_URL=https://http-intake.logs.datadoghq.com/api/v2/logs`
   - Example for Axiom: `INGEST_URL=https://api.axiom.co/v1/datasets/DATASET_NAME/ingest`
   - Example for BetterStack: `INGEST_URL=https://in.logs.betterstack.com`
   - Optional.
 
 - `ADDITIONAL_HEADERS` - Any additional headers to be sent with the generic request.
   - Useful for auth. In the format of a cookie. meaning each key value pair is split by a semi-colon and each key value is split by an equals sign.
+  - Example for Datadog: `ADDITIONAL_HEADERS=DD-API-KEY=<DD_API_KEY>;DD-APPLICATION-KEY=<DD_APP_KEY>`
   - Example for Axiom/BetterStack: `ADDITIONAL_HEADERS=Authorization=Bearer API_TOKEN`
 
 - `REPORT_STATUS_EVERY` - Reports the status of the locomotive every 5 seconds.
