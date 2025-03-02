@@ -11,8 +11,27 @@ import (
 	"github.com/ferretcode/locomotive/railway"
 	"github.com/ferretcode/locomotive/webhook/discord"
 	"github.com/ferretcode/locomotive/webhook/generic"
+	"github.com/ferretcode/locomotive/webhook/grafana"
 	"github.com/ferretcode/locomotive/webhook/slack"
 )
+
+type webhookCtx struct {
+	provider      string
+	logsFilter    []string
+	contentFilter string
+
+	webhooksConfig *webhooksConfig
+
+	sendWebhook func(logs []railway.EnvironmentLog, cfg *config.Config) error
+}
+
+type webhooksConfig struct {
+	wg              *sync.WaitGroup
+	cfg             *config.Config
+	logsTransported *atomic.Int64
+	logs            []railway.EnvironmentLog
+	errChan         chan error
+}
 
 func SendGenericWebhook(logs []railway.EnvironmentLog, cfg *config.Config) error {
 	return generic.SendWebhook(logs, cfg, client)
@@ -20,6 +39,10 @@ func SendGenericWebhook(logs []railway.EnvironmentLog, cfg *config.Config) error
 
 func SendDiscordWebhook(logs []railway.EnvironmentLog, cfg *config.Config) error {
 	return discord.SendWebhook(logs, cfg, client)
+}
+
+func SendGrafanaWebhook(logs []railway.EnvironmentLog, cfg *config.Config) error {
+	return grafana.SendWebhook(logs, cfg, client)
 }
 
 func SendSlackWebhook(logs []railway.EnvironmentLog, cfg *config.Config) error {
@@ -43,97 +66,85 @@ func SendWebhooks(logs []railway.EnvironmentLog, cfg *config.Config) (int64, []e
 		}
 	}()
 
+	webhooksConfig := &webhooksConfig{
+		wg:              &wg,
+		cfg:             cfg,
+		logsTransported: &logsTransported,
+		logs:            logs,
+		errChan:         errChan,
+	}
+
 	if cfg.DiscordWebhookUrl != "" {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
-			filteredLogs := railway.FilterLogs(logs, cfg.LogsFilterDiscord, cfg.LogsContentFilterDiscord)
-
-			logsLen, filteredLogsLen := len(logs), len(filteredLogs)
-
-			if logsLen > filteredLogsLen {
-				logger.Stdout.Debug("discord logs filtered",
-					slog.Int("amount filtered", logsLen-filteredLogsLen),
-					slog.Int("logs pre filter", logsLen),
-					slog.Int("logs post filter", filteredLogsLen),
-				)
-			}
-
-			err := SendDiscordWebhook(filteredLogs, cfg)
-			if err != nil {
-				errChan <- fmt.Errorf("discord error: %w", err)
-				wg.Add(1)
-			}
-
-			if err == nil {
-				logsTransported.Add(int64(filteredLogsLen))
-			}
-		}()
+		sendWebhookWithProvider(webhookCtx{
+			provider:       "discord",
+			logsFilter:     cfg.LogsFilterDiscord,
+			contentFilter:  cfg.LogsContentFilterDiscord,
+			webhooksConfig: webhooksConfig,
+			sendWebhook:    SendDiscordWebhook,
+		})
 	}
 
 	if cfg.SlackWebhookUrl != "" {
-		wg.Add(1)
+		sendWebhookWithProvider(webhookCtx{
+			provider:       "slack",
+			logsFilter:     cfg.LogsFilterSlack,
+			contentFilter:  cfg.LogsContentFilterSlack,
+			webhooksConfig: webhooksConfig,
+			sendWebhook:    SendSlackWebhook,
+		})
+	}
 
-		go func() {
-			defer wg.Done()
-
-			filteredLogs := railway.FilterLogs(logs, cfg.LogsFilterSlack, cfg.LogsContentFilterSlack)
-
-			logsLen, filteredLogsLen := len(logs), len(filteredLogs)
-
-			if logsLen > filteredLogsLen {
-				logger.Stdout.Debug("slack logs filtered",
-					slog.Int("amount filtered", logsLen-filteredLogsLen),
-					slog.Int("logs pre filter", logsLen),
-					slog.Int("logs post filter", filteredLogsLen),
-				)
-			}
-
-			err := SendSlackWebhook(filteredLogs, cfg)
-			if err != nil {
-				errChan <- fmt.Errorf("slack error: %w", err)
-				wg.Add(1)
-			}
-
-			if err == nil {
-				logsTransported.Add(int64(filteredLogsLen))
-			}
-		}()
+	if cfg.GrafanaIngestUrl != "" {
+		sendWebhookWithProvider(webhookCtx{
+			provider:       "grafana",
+			logsFilter:     cfg.LogsFilterGrafana,
+			contentFilter:  cfg.LogsContentFilterGrafana,
+			webhooksConfig: webhooksConfig,
+			sendWebhook:    SendGrafanaWebhook,
+		})
 	}
 
 	if cfg.IngestUrl != "" {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
-			filteredLogs := railway.FilterLogs(logs, cfg.LogsFilterWebhook, cfg.LogsContentFilterWebhook)
-
-			logsLen, filteredLogsLen := len(logs), len(filteredLogs)
-
-			if logsLen > filteredLogsLen {
-				logger.Stdout.Debug("webhook logs filtered",
-					slog.Int("amount filtered", logsLen-filteredLogsLen),
-					slog.Int("logs pre filter", logsLen),
-					slog.Int("logs post filter", filteredLogsLen),
-				)
-			}
-
-			err := SendGenericWebhook(filteredLogs, cfg)
-			if err != nil {
-				errChan <- fmt.Errorf("ingest error: %w", err)
-				wg.Add(1)
-			}
-
-			if err == nil {
-				logsTransported.Add(int64(filteredLogsLen))
-			}
-		}()
+		sendWebhookWithProvider(webhookCtx{
+			provider:       "webhook",
+			logsFilter:     cfg.LogsFilterWebhook,
+			contentFilter:  cfg.LogsContentFilterWebhook,
+			webhooksConfig: webhooksConfig,
+			sendWebhook:    SendGenericWebhook,
+		})
 	}
 
 	wg.Wait()
 
 	return logsTransported.Load(), errors
+}
+
+func sendWebhookWithProvider(ctx webhookCtx) {
+	ctx.webhooksConfig.wg.Add(1)
+
+	go func() {
+		defer ctx.webhooksConfig.wg.Done()
+
+		filteredLogs := railway.FilterLogs(ctx.webhooksConfig.logs, ctx.logsFilter, ctx.contentFilter)
+
+		logsLen, filteredLogsLen := len(ctx.webhooksConfig.logs), len(filteredLogs)
+
+		if logsLen > filteredLogsLen {
+			logger.Stdout.Debug(ctx.provider+"logs filtered",
+				slog.Int("amount filtered", logsLen-filteredLogsLen),
+				slog.Int("logs pre filter", logsLen),
+				slog.Int("logs post filter", filteredLogsLen),
+			)
+		}
+
+		err := ctx.sendWebhook(filteredLogs, ctx.webhooksConfig.cfg)
+		if err != nil {
+			ctx.webhooksConfig.errChan <- fmt.Errorf("ingest error: %w", err)
+			ctx.webhooksConfig.wg.Add(1)
+		}
+
+		if err == nil {
+			ctx.webhooksConfig.logsTransported.Add(int64(filteredLogsLen))
+		}
+	}()
 }

@@ -44,6 +44,8 @@ type Config struct {
 	SlackPrettyJson bool     `env:"SLACK_PRETTY_JSON" envDefault:"false"`
 	SlackTags       []string `env:"SLACK_TAGS" envSeparator:","`
 
+	GrafanaIngestUrl string `env:"GRAFANA_INGEST_URL"`
+
 	IngestUrl         string            `env:"INGEST_URL"`
 	AdditionalHeaders AdditionalHeaders `env:"ADDITIONAL_HEADERS"`
 
@@ -52,12 +54,14 @@ type Config struct {
 	LogsFilterGlobal  []string `env:"LOGS_FILTER" envSeparator:","`
 	LogsFilterDiscord []string `env:"LOGS_FILTER_DISCORD" envSeparator:","`
 	LogsFilterSlack   []string `env:"LOGS_FILTER_SLACK" envSeparator:","`
+	LogsFilterGrafana []string `env:"LOGS_FILTER_GRAFANA" envSeparator:","`
 	LogsFilterWebhook []string `env:"LOGS_FILTER_WEBHOOK" envSeparator:","`
 
 	// New content filter fields
 	LogsContentFilterGlobal  string `env:"LOGS_CONTENT_FILTER"`
 	LogsContentFilterDiscord string `env:"LOGS_CONTENT_FILTER_DISCORD"`
 	LogsContentFilterSlack   string `env:"LOGS_CONTENT_FILTER_SLACK"`
+	LogsContentFilterGrafana string `env:"LOGS_CONTENT_FILTER_GRAFANA"`
 	LogsContentFilterWebhook string `env:"LOGS_CONTENT_FILTER_WEBHOOK"`
 }
 
@@ -76,8 +80,8 @@ func GetConfig() (*Config, error) {
 		return nil, errors.New("invalid Slack webhook URL")
 	}
 
-	if config.DiscordWebhookUrl == "" && config.IngestUrl == "" && config.SlackWebhookUrl == "" {
-		return nil, errors.New("specify either a discord webhook url or an ingest url or a slack webhook url")
+	if config.DiscordWebhookUrl == "" && config.IngestUrl == "" && config.SlackWebhookUrl == "" && config.GrafanaIngestUrl == "" {
+		return nil, errors.New("specify either a discord webhook url or an ingest url or a slack webhook url or a grafana url")
 	}
 
 	return &config, nil
