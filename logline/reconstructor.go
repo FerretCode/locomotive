@@ -99,3 +99,39 @@ func ReconstructLogLine(log railway.EnvironmentLog) ([]byte, error) {
 
 	return jsonObject, nil
 }
+
+// reconstruct a single log into a format acceptable by loki
+func ReconstructLogLineLoki(log railway.EnvironmentLog) ([]string, error) {
+	var err error
+	jsonObject := []byte("{}")
+
+	cleanMessage := ansiEscapeRe.ReplaceAllString(log.Message, "")
+
+	for i := range log.Attributes {
+		jsonObject, err = jsonparser.Set(jsonObject, []byte(log.Attributes[i].Value), log.Attributes[i].Key)
+		if err != nil {
+			return nil, fmt.Errorf("failed to append json attribute to object: %w", err)
+		}
+	}
+
+	// check for a timestamp attribute
+	timeStampAttr, hasTimeStampAttr := railway.AttributesHasKeys(log.Attributes, commonTimeStampAttributes)
+
+	var timeStamp []byte
+
+	// Use timestamp from structured logging if available, otherwise fallback to timestamp set by Railway
+	if hasTimeStampAttr {
+		timeStamp = []byte(timeStampAttr)
+	} else {
+		timeStamp = []byte(strconv.Quote(log.Timestamp.UnixNano())))
+	}
+
+	// set severity in all situations for backwards compatibility
+	// railway already normilizes the level attribute into the severity field, or vice versa
+	jsonObject, err = jsonparser.Set(jsonObject, []byte(strconv.Quote(log.Severity)), "severity")
+	if err != nil {
+		return nil, fmt.Errorf("failed to append severity attribute to object: %w", err)
+	}
+
+	return []string{}, nil
+}
