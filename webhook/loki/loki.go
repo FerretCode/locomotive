@@ -1,4 +1,4 @@
-package grafana
+package loki
 
 import (
 	"bytes"
@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"slices"
-	"strconv"
 
 	"github.com/ferretcode/locomotive/config"
 	"github.com/ferretcode/locomotive/logline"
@@ -22,35 +21,41 @@ var acceptedStatusCodes = []int{
 }
 
 func SendWebhook(logs []railway.EnvironmentLog, cfg *config.Config, client *http.Client) error {
-	firstLog := logs[0]
-
 	streams := streams{
-		Streams: []stream{
-			{
-				Stream: map[string]string{
-					"project_id":             firstLog.Tags.ProjectID,
-					"project_name":           firstLog.Tags.ProjectName,
-					"environment_id":         firstLog.Tags.EnvironmentID,
-					"environment_name":       firstLog.Tags.EnvironmentName,
-					"service_id":             firstLog.Tags.ServiceID,
-					"service_name":           firstLog.Tags.ServiceName,
-					"deployment_id":          firstLog.Tags.DeploymentID,
-					"deployment_instance_id": firstLog.Tags.DeploymentInstanceID,
-				},
-				Values: [][]string{},
-			},
-		},
+		Streams: []stream{},
 	}
 
 	for i := range logs {
-		rawLog, err := logline.ReconstructLogLine(logs[i])
+		var serviceStream stream
+
+		streamIndex := findServiceStream(logs[i].Tags.ServiceID, &streams)
+		if streamIndex < 0 {
+			log := logs[i]
+
+			serviceStream = stream{
+				Stream: map[string]string{
+					"project_id":             log.Tags.ProjectID,
+					"project_name":           log.Tags.ProjectName,
+					"environment_id":         log.Tags.EnvironmentID,
+					"environment_name":       log.Tags.EnvironmentName,
+					"service_id":             log.Tags.ServiceID,
+					"service_name":           log.Tags.ServiceName,
+					"deployment_id":          log.Tags.DeploymentID,
+					"deployment_instance_id": log.Tags.DeploymentInstanceID,
+				},
+				Values: [][]interface{}{},
+			}
+
+			streams.Streams = append(streams.Streams, serviceStream)
+			streamIndex = len(streams.Streams) - 1
+		}
+
+		rawLog, err := logline.ReconstructLogLineLoki(logs[i])
 		if err != nil {
 			return fmt.Errorf("failed to reconstruct log object: %w", err)
 		}
 
-		time := strconv.FormatInt(logs[i].Timestamp.UnixNano(), 10)
-
-		streams.Streams[0].Values = append(streams.Streams[0].Values, []string{time, string(rawLog)})
+		streams.Streams[streamIndex].Values = append(streams.Streams[streamIndex].Values, rawLog)
 	}
 
 	encodedStreams, err := json.Marshal(streams)
@@ -58,7 +63,7 @@ func SendWebhook(logs []railway.EnvironmentLog, cfg *config.Config, client *http
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, cfg.GrafanaIngestUrl, bytes.NewReader(encodedStreams))
+	req, err := http.NewRequest(http.MethodPost, cfg.LokiIngestUrl, bytes.NewReader(encodedStreams))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -83,4 +88,14 @@ func SendWebhook(logs []railway.EnvironmentLog, cfg *config.Config, client *http
 	}
 
 	return nil
+}
+
+func findServiceStream(serviceId string, streams *streams) int {
+	for i, stream := range streams.Streams {
+		if stream.Stream["service_id"] == serviceId {
+			return i
+		}
+	}
+
+	return -1
 }

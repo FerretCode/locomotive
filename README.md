@@ -150,7 +150,7 @@ All variables:
 
     -   Same options and behavior as the global log filter.
 
--   `LOGS_FILTER_GRAFANA` - Slack specific log filter.
+-   `LOGS_FILTER_LOKI` - Slack specific log filter.
 
     -   Same options and behavior as the global log filter.
 
@@ -167,7 +167,7 @@ You can filter logs by severity level and content using the following environmen
 -   `LOGS_FILTER`: Global level filter applied to all outputs
 -   `LOGS_FILTER_DISCORD`: Level filter applied to Discord output
 -   `LOGS_FILTER_SLACK`: Level filter applied to Slack output
--   `LOGS_FILTER_GRAFANA`: Level filter applied to Grafana output
+-   `LOGS_FILTER_LOKI`: Level filter applied to Loki output
 -   `LOGS_FILTER_WEBHOOK`: Level filter applied to webhook output
 
 Level filter options: ALL, INFO, ERROR, WARN, or any custom combination of severity / level.
@@ -177,7 +177,7 @@ Level filter options: ALL, INFO, ERROR, WARN, or any custom combination of sever
 -   `LOGS_CONTENT_FILTER`: Global content filter applied to all outputs
 -   `LOGS_CONTENT_FILTER_DISCORD`: Content filter applied to Discord output
 -   `LOGS_CONTENT_FILTER_SLACK`: Content filter applied to Slack output
--   `LOGS_CONTENT_FILTER_GRAFANA`: Content filter applied to Grafana output
+-   `LOGS_CONTENT_FILTER_LOKI`: Content filter applied to Loki output
 -   `LOGS_CONTENT_FILTER_WEBHOOK`: Content filter applied to webhook output
 
 Content filters support regular expressions or plain text searches.
