@@ -6,6 +6,7 @@ import (
 
 	"github.com/buger/jsonparser"
 	"github.com/ferretcode/locomotive/railway"
+	"github.com/ferretcode/locomotive/util"
 )
 
 func ReconstructLogLinesLoki(logs []railway.EnvironmentLog) ([]byte, error) {
@@ -27,8 +28,6 @@ func ReconstructLogLinesLoki(logs []railway.EnvironmentLog) ([]byte, error) {
 	}
 
 	jsonObject = append(jsonObject, []byte(`]}`)...)
-
-	fmt.Println(string(jsonObject))
 
 	return jsonObject, nil
 }
@@ -65,7 +64,7 @@ func ReconstructLogLineLoki(log railway.EnvironmentLog) ([]byte, error) {
 	cleanMessage := AnsiEscapeRe.ReplaceAllString(log.Message, "")
 
 	for i := range log.Attributes {
-		slogAttributes, err = jsonparser.Set(slogAttributes, []byte(log.Attributes[i].Value), log.Attributes[i].Key)
+		slogAttributes, err = jsonparser.Set(slogAttributes, []byte(util.QuoteIfNeeded(log.Attributes[i].Value)), log.Attributes[i].Key)
 		if err != nil {
 			return nil, fmt.Errorf("failed to append json attribute to object: %w", err)
 		}
