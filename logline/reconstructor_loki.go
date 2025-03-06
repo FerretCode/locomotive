@@ -35,12 +35,11 @@ func ReconstructLogLinesLoki(logs []railway.EnvironmentLog) ([]byte, error) {
 
 // reconstruct a single log into a format acceptable by loki
 func ReconstructLogLineLoki(log railway.EnvironmentLog) ([]byte, error) {
-	var err error
 	jsonObject := []byte("{}")
 
-	jsonObject, err = jsonparser.Set(jsonObject, []byte("{}"), "stream")
+	jsonObject, err := jsonparser.Set(jsonObject, []byte("{}"), "stream")
 	if err != nil {
-		return jsonObject, err
+		return jsonObject, fmt.Errorf("failed to create stream object: %w", err)
 	}
 
 	labels := map[string]string{
@@ -57,7 +56,7 @@ func ReconstructLogLineLoki(log railway.EnvironmentLog) ([]byte, error) {
 	for label, value := range labels {
 		jsonObject, err = jsonparser.Set(jsonObject, []byte(fmt.Sprintf("\"%s\"", []byte(value))), "stream", label)
 		if err != nil {
-			return jsonObject, err
+			return jsonObject, fmt.Errorf("failed to append label to stream object: %w", err)
 		}
 	}
 
@@ -72,10 +71,8 @@ func ReconstructLogLineLoki(log railway.EnvironmentLog) ([]byte, error) {
 		}
 	}
 
-	fmt.Println(slogAttributes)
-
 	// only use Railway timestamp
-	timeStamp := []byte(fmt.Sprintf("%d", log.Timestamp.UnixNano()))
+	timeStamp := fmt.Sprintf("%d", log.Timestamp.UnixNano())
 
 	// set severity in all situations for backwards compatibility
 	// railway already normilizes the level attribute into the severity field, or vice versa
@@ -85,12 +82,12 @@ func ReconstructLogLineLoki(log railway.EnvironmentLog) ([]byte, error) {
 	}
 
 	values := []byte(
-		fmt.Sprintf("[[\"%s\", \"%s\", %s]]", string(timeStamp), cleanMessage, string(slogAttributes)),
+		fmt.Sprintf("[[\"%s\", \"%s\", %s]]", timeStamp, cleanMessage, string(slogAttributes)),
 	)
 
 	jsonObject, err = jsonparser.Set(jsonObject, values, "values")
 	if err != nil {
-		return jsonObject, err
+		return jsonObject, fmt.Errorf("failed to append values slice to object: %w", err)
 	}
 
 	return jsonObject, nil
