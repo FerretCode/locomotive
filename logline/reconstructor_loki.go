@@ -38,7 +38,7 @@ func ReconstructLogLineLoki(log railway.EnvironmentLog) ([]byte, error) {
 
 	jsonObject, err := jsonparser.Set(jsonObject, []byte("{}"), "stream")
 	if err != nil {
-		return jsonObject, fmt.Errorf("failed to create stream object: %w", err)
+		return nil, fmt.Errorf("failed to create stream object: %w", err)
 	}
 
 	labels := map[string]string{
@@ -53,9 +53,9 @@ func ReconstructLogLineLoki(log railway.EnvironmentLog) ([]byte, error) {
 	}
 
 	for label, value := range labels {
-		jsonObject, err = jsonparser.Set(jsonObject, []byte(fmt.Sprintf("\"%s\"", []byte(value))), "stream", label)
+		jsonObject, err = jsonparser.Set(jsonObject, []byte(strconv.Quote(value)), "stream", label)
 		if err != nil {
-			return jsonObject, fmt.Errorf("failed to append label to stream object: %w", err)
+			return nil, fmt.Errorf("failed to append label to stream object: %w", err)
 		}
 	}
 
@@ -64,6 +64,10 @@ func ReconstructLogLineLoki(log railway.EnvironmentLog) ([]byte, error) {
 	cleanMessage := AnsiEscapeRe.ReplaceAllString(log.Message, "")
 
 	for i := range log.Attributes {
+		if log.Attributes[i].Key == "time" || log.Attributes[i].Key == "level" {
+			continue
+		}
+
 		slogAttributes, err = jsonparser.Set(slogAttributes, []byte(util.QuoteIfNeeded(log.Attributes[i].Value)), log.Attributes[i].Key)
 		if err != nil {
 			return nil, fmt.Errorf("failed to append json attribute to object: %w", err)
@@ -71,7 +75,7 @@ func ReconstructLogLineLoki(log railway.EnvironmentLog) ([]byte, error) {
 	}
 
 	// only use Railway timestamp
-	timeStamp := fmt.Sprintf("%d", log.Timestamp.UnixNano())
+	timeStamp := strconv.FormatInt(log.Timestamp.UnixNano(), 10)
 
 	// set severity in all situations for backwards compatibility
 	// railway already normilizes the level attribute into the severity field, or vice versa
@@ -80,13 +84,32 @@ func ReconstructLogLineLoki(log railway.EnvironmentLog) ([]byte, error) {
 		return nil, fmt.Errorf("failed to append severity attribute to object: %w", err)
 	}
 
-	values := []byte(
-		fmt.Sprintf("[[\"%s\", \"%s\", %s]]", timeStamp, cleanMessage, string(slogAttributes)),
-	)
+	jsonObject, err = jsonparser.Set(jsonObject, []byte(strconv.Quote(log.Severity)), "stream", "level")
+	if err != nil {
+		return nil, fmt.Errorf("failed to append severity attribute to object: %w", err)
+	}
+
+	// fill values with mock data so jsonparser can find the corresponding array indicies
+	values := []byte("[[0, 1, 2]]")
+
+	values, err = jsonparser.Set(values, []byte(util.QuoteIfNeeded(timeStamp)), "[0]", "[0]")
+	if err != nil {
+		return nil, fmt.Errorf("failed to set timestamp in values slice: %w", err)
+	}
+
+	values, err = jsonparser.Set(values, []byte(util.QuoteIfNeeded(cleanMessage)), "[0]", "[1]")
+	if err != nil {
+		return nil, fmt.Errorf("failed to set message in values slice: %w", err)
+	}
+
+	values, err = jsonparser.Set(values, slogAttributes, "[0]", "[2]")
+	if err != nil {
+		return nil, fmt.Errorf("failed to set slog attributes in values slice: %w", err)
+	}
 
 	jsonObject, err = jsonparser.Set(jsonObject, values, "values")
 	if err != nil {
-		return jsonObject, fmt.Errorf("failed to append values slice to object: %w", err)
+		return nil, fmt.Errorf("failed to append values slice to object: %w", err)
 	}
 
 	return jsonObject, nil

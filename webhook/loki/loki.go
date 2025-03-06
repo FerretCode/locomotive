@@ -25,8 +25,6 @@ func SendWebhook(logs []railway.EnvironmentLog, cfg *config.Config, client *http
 		return err
 	}
 
-	fmt.Println(string(jsonLogs))
-
 	req, err := http.NewRequest(http.MethodPost, cfg.LokiIngestUrl, bytes.NewReader(jsonLogs))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
