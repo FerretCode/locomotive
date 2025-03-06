@@ -73,8 +73,10 @@ For Structured JSON logs
         "timestamp": "2020-05-22T21:27:33Z"
     }
 ]
+```
 
 ## Grafana Loki Plaintext Log Example
+
 ```json
 {
     "streams": [
@@ -91,18 +93,14 @@ For Structured JSON logs
                 "severity": "error",
                 "level": "error"
             },
-            "values": [
-                [
-                    "1590182853000000000",
-                    "Error",
-                    {}
-                ]
-            ]
-        },
+            "values": [["1590182853000000000", "Error", {}]]
+        }
     ]
 }
+```
 
 ## Grafana Loki Structured Log Example
+
 ```json
 {
     "streams": [
@@ -134,7 +132,6 @@ For Structured JSON logs
         }
     ]
 }
-```
 ```
 
 **Notes:**
@@ -251,5 +248,6 @@ Level filter options: ALL, INFO, ERROR, WARN, or any custom combination of sever
 Content filters support regular expressions or plain text searches.
 
 Examples:
-  - "hello"
-  - "[A-za-z]ello"
+
+-   "hello"
+-   "[A-za-z]ello"
