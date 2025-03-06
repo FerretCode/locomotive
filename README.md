@@ -93,7 +93,7 @@ For Structured JSON logs
             },
             "values": [
                 [
-                    "1741287854103261032",
+                    "1590182853000000000",
                     "Error",
                     {}
                 ]
@@ -121,7 +121,7 @@ For Structured JSON logs
             },
             "values": [
                 [
-                    "1741287854113152340",
+                    "1590182853000000000",
                     "hello, world",
                     {
                         "float": "10.51",
