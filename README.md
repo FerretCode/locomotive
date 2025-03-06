@@ -75,7 +75,7 @@ For Structured JSON logs
 ]
 ```
 
-## Grafana Loki Plaintext Log Example
+Grafana Loki Plaintext Log Example
 
 ```json
 {
@@ -99,7 +99,7 @@ For Structured JSON logs
 }
 ```
 
-## Grafana Loki Structured Log Example
+Grafana Loki Structured Log Example
 
 ```json
 {
