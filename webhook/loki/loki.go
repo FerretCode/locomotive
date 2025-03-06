@@ -51,13 +51,3 @@ func SendWebhook(logs []railway.EnvironmentLog, cfg *config.Config, client *http
 
 	return nil
 }
-
-func findServiceStream(serviceId string, streams *streams) int {
-	for i, stream := range streams.Streams {
-		if stream.Stream["service_id"] == serviceId {
-			return i
-		}
-	}
-
-	return -1
-}

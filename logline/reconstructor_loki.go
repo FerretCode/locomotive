@@ -34,12 +34,9 @@ func ReconstructLogLinesLoki(logs []railway.EnvironmentLog) ([]byte, error) {
 
 // reconstruct a single log into a format acceptable by loki
 func ReconstructLogLineLoki(log railway.EnvironmentLog) ([]byte, error) {
-	jsonObject := []byte("{}")
+	var err error
 
-	jsonObject, err := jsonparser.Set(jsonObject, []byte("{}"), "stream")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create stream object: %w", err)
-	}
+	jsonObject := []byte("{\"stream\":{},\"values\":[[0,1,{}]]}")
 
 	labels := map[string]string{
 		"project_id":             log.Tags.ProjectID,
@@ -89,27 +86,19 @@ func ReconstructLogLineLoki(log railway.EnvironmentLog) ([]byte, error) {
 		return nil, fmt.Errorf("failed to append severity attribute to object: %w", err)
 	}
 
-	// fill values with mock data so jsonparser can find the corresponding array indicies
-	values := []byte("[[0, 1, 2]]")
-
-	values, err = jsonparser.Set(values, []byte(util.QuoteIfNeeded(timeStamp)), "[0]", "[0]")
+	jsonObject, err = jsonparser.Set(jsonObject, []byte(util.QuoteIfNeeded(timeStamp)), "values", "[0]", "[0]")
 	if err != nil {
 		return nil, fmt.Errorf("failed to set timestamp in values slice: %w", err)
 	}
 
-	values, err = jsonparser.Set(values, []byte(util.QuoteIfNeeded(cleanMessage)), "[0]", "[1]")
+	jsonObject, err = jsonparser.Set(jsonObject, []byte(util.QuoteIfNeeded(cleanMessage)), "values", "[0]", "[1]")
 	if err != nil {
 		return nil, fmt.Errorf("failed to set message in values slice: %w", err)
 	}
 
-	values, err = jsonparser.Set(values, slogAttributes, "[0]", "[2]")
+	jsonObject, err = jsonparser.Set(jsonObject, slogAttributes, "values", "[0]", "[2]")
 	if err != nil {
 		return nil, fmt.Errorf("failed to set slog attributes in values slice: %w", err)
-	}
-
-	jsonObject, err = jsonparser.Set(jsonObject, values, "values")
-	if err != nil {
-		return nil, fmt.Errorf("failed to append values slice to object: %w", err)
 	}
 
 	return jsonObject, nil
