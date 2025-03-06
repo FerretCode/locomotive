@@ -3,8 +3,16 @@ package util
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 )
+
+func QuoteIfNeeded(s string) string {
+	if len(s) > 1 && (s[0] == '"' && s[len(s)-1] == '"') {
+		return s
+	}
+	return strconv.Quote(s)
+}
 
 func ByteCountIEC(b uint64) string {
 	const unit = 1024

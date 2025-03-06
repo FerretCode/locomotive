@@ -75,6 +75,65 @@ For Structured JSON logs
 ]
 ```
 
+Grafana Loki Plaintext Log Example
+
+```json
+{
+    "streams": [
+        {
+            "stream": {
+                "deployment_id": "fb8172c8-a65d-48a4-9d1e-9d5ef986c9c3",
+                "deployment_instance_id": "25dfeb9b-0097-4f91-820b-5dccc5009b1d",
+                "project_id": "dce92382-c4e4-4923-bacd-3a5f7bcab337",
+                "project_name": "Union Pacific Freight",
+                "environment_id": "57d88ccb-8db9-4aef-957e-ecd94c41fdf8",
+                "environment_name": "production",
+                "service_id": "aa8ce660-dad0-4f7d-8921-46295d180c09",
+                "service_name": "Dash 8",
+                "severity": "error",
+                "level": "error"
+            },
+            "values": [["1590182853000000000", "a plaintext message", {}]]
+        }
+    ]
+}
+```
+
+Grafana Loki Structured Log Example
+
+```json
+{
+    "streams": [
+        {
+            "stream": {
+                "deployment_id": "fb8172c8-a65d-48a4-9d1e-9d5ef986c9c3",
+                "deployment_instance_id": "25dfeb9b-0097-4f91-820b-5dccc5009b1d",
+                "project_id": "dce92382-c4e4-4923-bacd-3a5f7bcab337",
+                "project_name": "Union Pacific Freight",
+                "environment_id": "57d88ccb-8db9-4aef-957e-ecd94c41fdf8",
+                "environment_name": "production",
+                "service_id": "aa8ce660-dad0-4f7d-8921-46295d180c09",
+                "service_name": "Dash 8",
+                "severity": "error",
+                "level": "error"
+            },
+            "values": [
+                [
+                    "1590182853000000000",
+                    "hello, world",
+                    {
+                        "float": "10.51",
+                        "number": "10",
+                        "string_value": "hello world",
+                        "user": "null"
+                    }
+                ]
+            ]
+        }
+    ]
+}
+```
+
 **Notes:**
 
 -   Metadata is gathered once when the locomotive starts, If a project/service/environment name has changed, the name in the metadata will not be correct until the locomotive is restarted.
@@ -84,6 +143,8 @@ For Structured JSON logs
 -   Various common timestamp attributes are included in every log object to increase compatibility with external logging services. [ref 1](https://axiom.co/docs/send-data/ingest#timestamp-field), [ref 2](https://betterstack.com/docs/logs/http-rest-api/#sending-timestamps)
 
 -   The default `Content-Type` for these POST requests is set to `application/json`
+
+-   Structured log attributes sent to Grafana Loki must always be a string
 
 All variables:
 
@@ -114,6 +175,12 @@ All variables:
 -   `SLACK_TAGS` - Tags to add to the Slack message.
 
     -   Supports multiple tags, separated with a comma.
+    -   Optional.
+
+-   `LOKI_INGEST_URL` - The Loki ingest URL to send logs to.
+
+    -   Example with no authentication: `https://loki-instance.up.railway.app`
+    -   Example with username/password authentication: `https://user:pass@loki-instance.up.railway.app`
     -   Optional.
 
 -   `INGEST_URL` - The URL to send a generic request to.
@@ -150,7 +217,7 @@ All variables:
 
     -   Same options and behavior as the global log filter.
 
--   `LOGS_FILTER_GRAFANA` - Slack specific log filter.
+-   `LOGS_FILTER_LOKI` - Slack specific log filter.
 
     -   Same options and behavior as the global log filter.
 
@@ -167,7 +234,7 @@ You can filter logs by severity level and content using the following environmen
 -   `LOGS_FILTER`: Global level filter applied to all outputs
 -   `LOGS_FILTER_DISCORD`: Level filter applied to Discord output
 -   `LOGS_FILTER_SLACK`: Level filter applied to Slack output
--   `LOGS_FILTER_GRAFANA`: Level filter applied to Grafana output
+-   `LOGS_FILTER_LOKI`: Level filter applied to Loki output
 -   `LOGS_FILTER_WEBHOOK`: Level filter applied to webhook output
 
 Level filter options: ALL, INFO, ERROR, WARN, or any custom combination of severity / level.
@@ -177,11 +244,12 @@ Level filter options: ALL, INFO, ERROR, WARN, or any custom combination of sever
 -   `LOGS_CONTENT_FILTER`: Global content filter applied to all outputs
 -   `LOGS_CONTENT_FILTER_DISCORD`: Content filter applied to Discord output
 -   `LOGS_CONTENT_FILTER_SLACK`: Content filter applied to Slack output
--   `LOGS_CONTENT_FILTER_GRAFANA`: Content filter applied to Grafana output
+-   `LOGS_CONTENT_FILTER_LOKI`: Content filter applied to Loki output
 -   `LOGS_CONTENT_FILTER_WEBHOOK`: Content filter applied to webhook output
 
 Content filters support regular expressions or plain text searches.
 
 Examples:
-  - "hello"
-  - "[A-za-z]ello"
+
+-   "hello"
+-   "[A-za-z]ello"

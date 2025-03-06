@@ -11,7 +11,7 @@ import (
 	"github.com/ferretcode/locomotive/railway"
 	"github.com/ferretcode/locomotive/webhook/discord"
 	"github.com/ferretcode/locomotive/webhook/generic"
-	"github.com/ferretcode/locomotive/webhook/grafana"
+	"github.com/ferretcode/locomotive/webhook/loki"
 	"github.com/ferretcode/locomotive/webhook/slack"
 )
 
@@ -42,7 +42,7 @@ func SendDiscordWebhook(logs []railway.EnvironmentLog, cfg *config.Config) error
 }
 
 func SendGrafanaWebhook(logs []railway.EnvironmentLog, cfg *config.Config) error {
-	return grafana.SendWebhook(logs, cfg, client)
+	return loki.SendWebhook(logs, cfg, client)
 }
 
 func SendSlackWebhook(logs []railway.EnvironmentLog, cfg *config.Config) error {
@@ -94,11 +94,11 @@ func SendWebhooks(logs []railway.EnvironmentLog, cfg *config.Config) (int64, []e
 		})
 	}
 
-	if cfg.GrafanaIngestUrl != "" {
+	if cfg.LokiIngestUrl != "" {
 		sendWebhookWithProvider(webhookCtx{
-			provider:       "grafana",
-			logsFilter:     cfg.LogsFilterGrafana,
-			contentFilter:  cfg.LogsContentFilterGrafana,
+			provider:       "loki",
+			logsFilter:     cfg.LogsFilterLoki,
+			contentFilter:  cfg.LogsContentFilterLoki,
 			webhooksConfig: webhooksConfig,
 			sendWebhook:    SendGrafanaWebhook,
 		})

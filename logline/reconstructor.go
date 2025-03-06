@@ -3,7 +3,6 @@ package logline
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strconv"
 	"time"
 
@@ -12,9 +11,6 @@ import (
 )
 
 var commonTimeStampAttributes = []string{"time", "_time", "timestamp", "ts", "datetime", "dt"}
-
-// https://github.com/acarl005/stripansi/blob/master/stripansi.go
-var ansiEscapeRe = regexp.MustCompile("[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))")
 
 // reconstruct multiple logs into a raw json array containing json log lines
 func ReconstructLogLines(logs []railway.EnvironmentLog) ([]byte, error) {
@@ -44,7 +40,7 @@ func ReconstructLogLines(logs []railway.EnvironmentLog) ([]byte, error) {
 func ReconstructLogLine(log railway.EnvironmentLog) ([]byte, error) {
 	jsonObject := []byte("{}")
 
-	cleanMessage := ansiEscapeRe.ReplaceAllString(log.Message, "")
+	cleanMessage := AnsiEscapeRe.ReplaceAllString(log.Message, "")
 
 	jsonObject, err := jsonparser.Set(jsonObject, []byte(strconv.Quote(cleanMessage)), "message")
 	if err != nil {
