@@ -33,10 +33,8 @@ func ReconstructLogLinesLoki(logs []railway.EnvironmentLog) ([]byte, error) {
 }
 
 // reconstruct a single log into a format acceptable by loki
-func ReconstructLogLineLoki(log railway.EnvironmentLog) ([]byte, error) {
-	var err error
-
-	jsonObject := []byte("{\"stream\":{},\"values\":[[0,1,{}]]}")
+func ReconstructLogLineLoki(log railway.EnvironmentLog) (jsonObject []byte, err error) {
+	jsonObject = []byte("{\"stream\":{},\"values\":[[0,1,{}]]}")
 
 	labels := map[string]string{
 		"project_id":             log.Tags.ProjectID,
