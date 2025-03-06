@@ -54,8 +54,6 @@ func ReconstructLogLineLoki(log railway.EnvironmentLog) (jsonObject []byte, err 
 		}
 	}
 
-	slogAttributes := []byte("{}")
-
 	cleanMessage := AnsiEscapeRe.ReplaceAllString(log.Message, "")
 
 	for i := range log.Attributes {
@@ -63,7 +61,7 @@ func ReconstructLogLineLoki(log railway.EnvironmentLog) (jsonObject []byte, err 
 			continue
 		}
 
-		slogAttributes, err = jsonparser.Set(slogAttributes, []byte(util.QuoteIfNeeded(log.Attributes[i].Value)), log.Attributes[i].Key)
+		jsonObject, err = jsonparser.Set(jsonObject, []byte(util.QuoteIfNeeded(log.Attributes[i].Value)), "values", "[0]", "[2]", log.Attributes[i].Key)
 		if err != nil {
 			return nil, fmt.Errorf("failed to append json attribute to object: %w", err)
 		}
@@ -92,11 +90,6 @@ func ReconstructLogLineLoki(log railway.EnvironmentLog) (jsonObject []byte, err 
 	jsonObject, err = jsonparser.Set(jsonObject, []byte(util.QuoteIfNeeded(cleanMessage)), "values", "[0]", "[1]")
 	if err != nil {
 		return nil, fmt.Errorf("failed to set message in values slice: %w", err)
-	}
-
-	jsonObject, err = jsonparser.Set(jsonObject, slogAttributes, "values", "[0]", "[2]")
-	if err != nil {
-		return nil, fmt.Errorf("failed to set slog attributes in values slice: %w", err)
 	}
 
 	return jsonObject, nil
