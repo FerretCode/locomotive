@@ -73,6 +73,68 @@ For Structured JSON logs
         "timestamp": "2020-05-22T21:27:33Z"
     }
 ]
+
+## Grafana Loki Plaintext Log Example
+```json
+{
+    "streams": [
+        {
+            "stream": {
+                "deployment_id": "fb8172c8-a65d-48a4-9d1e-9d5ef986c9c3",
+                "deployment_instance_id": "25dfeb9b-0097-4f91-820b-5dccc5009b1d",
+                "project_id": "dce92382-c4e4-4923-bacd-3a5f7bcab337",
+                "project_name": "Union Pacific Freight",
+                "environment_id": "57d88ccb-8db9-4aef-957e-ecd94c41fdf8",
+                "environment_name": "production",
+                "service_id": "aa8ce660-dad0-4f7d-8921-46295d180c09",
+                "service_name": "Dash 8",
+                "severity": "error",
+                "level": "error"
+            },
+            "values": [
+                [
+                    "1741287854103261032",
+                    "Error",
+                    {}
+                ]
+            ]
+        },
+    ]
+}
+
+## Grafana Loki Structured Log Example
+```json
+{
+    "streams": [
+        {
+            "stream": {
+                "deployment_id": "fb8172c8-a65d-48a4-9d1e-9d5ef986c9c3",
+                "deployment_instance_id": "25dfeb9b-0097-4f91-820b-5dccc5009b1d",
+                "project_id": "dce92382-c4e4-4923-bacd-3a5f7bcab337",
+                "project_name": "Union Pacific Freight",
+                "environment_id": "57d88ccb-8db9-4aef-957e-ecd94c41fdf8",
+                "environment_name": "production",
+                "service_id": "aa8ce660-dad0-4f7d-8921-46295d180c09",
+                "service_name": "Dash 8",
+                "severity": "error",
+                "level": "error"
+            },
+            "values": [
+                [
+                    "1741287854113152340",
+                    "hello, world",
+                    {
+                        "float": "10.51",
+                        "number": "10",
+                        "string value": "hello world",
+                        "user": "null"
+                    }
+                ]
+            ]
+        }
+    ]
+}
+```
 ```
 
 **Notes:**
@@ -84,6 +146,8 @@ For Structured JSON logs
 -   Various common timestamp attributes are included in every log object to increase compatibility with external logging services. [ref 1](https://axiom.co/docs/send-data/ingest#timestamp-field), [ref 2](https://betterstack.com/docs/logs/http-rest-api/#sending-timestamps)
 
 -   The default `Content-Type` for these POST requests is set to `application/json`
+
+-   Structured log attributes sent to Grafana Loki must always be a string
 
 All variables:
 
@@ -114,6 +178,10 @@ All variables:
 -   `SLACK_TAGS` - Tags to add to the Slack message.
 
     -   Supports multiple tags, separated with a comma.
+    -   Optional.
+
+-   `LOKI_INGEST_URL` - The Loki ingest URL to send logs to.
+
     -   Optional.
 
 -   `INGEST_URL` - The URL to send a generic request to.
