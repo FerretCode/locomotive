@@ -3,7 +3,6 @@ package logline
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strconv"
 	"time"
 
@@ -12,9 +11,6 @@ import (
 )
 
 var commonTimeStampAttributes = []string{"time", "_time", "timestamp", "ts", "datetime", "dt"}
-
-// https://github.com/acarl005/stripansi/blob/master/stripansi.go
-var ansiEscapeRe = regexp.MustCompile("[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))")
 
 // reconstruct multiple logs into a raw json array containing json log lines
 func ReconstructLogLines(logs []railway.EnvironmentLog) ([]byte, error) {
@@ -44,7 +40,7 @@ func ReconstructLogLines(logs []railway.EnvironmentLog) ([]byte, error) {
 func ReconstructLogLine(log railway.EnvironmentLog) ([]byte, error) {
 	jsonObject := []byte("{}")
 
-	cleanMessage := ansiEscapeRe.ReplaceAllString(log.Message, "")
+	cleanMessage := AnsiEscapeRe.ReplaceAllString(log.Message, "")
 
 	jsonObject, err := jsonparser.Set(jsonObject, []byte(strconv.Quote(cleanMessage)), "message")
 	if err != nil {
@@ -98,37 +94,4 @@ func ReconstructLogLine(log railway.EnvironmentLog) ([]byte, error) {
 	}
 
 	return jsonObject, nil
-}
-
-// reconstruct a single log into a format acceptable by loki
-func ReconstructLogLineLoki(log railway.EnvironmentLog) ([]interface{}, error) {
-	var err error
-	jsonObject := []byte("{}")
-
-	cleanMessage := ansiEscapeRe.ReplaceAllString(log.Message, "")
-
-	for i := range log.Attributes {
-		jsonObject, err = jsonparser.Set(jsonObject, []byte(log.Attributes[i].Value), log.Attributes[i].Key)
-		if err != nil {
-			return nil, fmt.Errorf("failed to append json attribute to object: %w", err)
-		}
-	}
-
-	// only use Railway timestamp
-	timeStamp := []byte(fmt.Sprintf("%d", log.Timestamp.UnixNano()))
-
-	// set severity in all situations for backwards compatibility
-	// railway already normilizes the level attribute into the severity field, or vice versa
-	jsonObject, err = jsonparser.Set(jsonObject, []byte(strconv.Quote(log.Severity)), "severity")
-	if err != nil {
-		return nil, fmt.Errorf("failed to append severity attribute to object: %w", err)
-	}
-
-	var slog map[string]string
-
-	err = json.Unmarshal(jsonObject, &slog)
-
-	streamValue := []interface{}{string(timeStamp), cleanMessage, slog}
-
-	return streamValue, nil
 }

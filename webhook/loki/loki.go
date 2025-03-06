@@ -2,7 +2,6 @@ package loki
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -21,49 +20,14 @@ var acceptedStatusCodes = []int{
 }
 
 func SendWebhook(logs []railway.EnvironmentLog, cfg *config.Config, client *http.Client) error {
-	streams := streams{
-		Streams: []stream{},
-	}
-
-	for i := range logs {
-		var serviceStream stream
-
-		streamIndex := findServiceStream(logs[i].Tags.ServiceID, &streams)
-		if streamIndex < 0 {
-			log := logs[i]
-
-			serviceStream = stream{
-				Stream: map[string]string{
-					"project_id":             log.Tags.ProjectID,
-					"project_name":           log.Tags.ProjectName,
-					"environment_id":         log.Tags.EnvironmentID,
-					"environment_name":       log.Tags.EnvironmentName,
-					"service_id":             log.Tags.ServiceID,
-					"service_name":           log.Tags.ServiceName,
-					"deployment_id":          log.Tags.DeploymentID,
-					"deployment_instance_id": log.Tags.DeploymentInstanceID,
-				},
-				Values: [][]interface{}{},
-			}
-
-			streams.Streams = append(streams.Streams, serviceStream)
-			streamIndex = len(streams.Streams) - 1
-		}
-
-		rawLog, err := logline.ReconstructLogLineLoki(logs[i])
-		if err != nil {
-			return fmt.Errorf("failed to reconstruct log object: %w", err)
-		}
-
-		streams.Streams[streamIndex].Values = append(streams.Streams[streamIndex].Values, rawLog)
-	}
-
-	encodedStreams, err := json.Marshal(streams)
+	jsonLogs, err := logline.ReconstructLogLinesLoki(logs)
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, cfg.LokiIngestUrl, bytes.NewReader(encodedStreams))
+	fmt.Println(string(jsonLogs))
+
+	req, err := http.NewRequest(http.MethodPost, cfg.LokiIngestUrl, bytes.NewReader(jsonLogs))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
