@@ -93,7 +93,7 @@ Grafana Loki Plaintext Log Example
                 "severity": "error",
                 "level": "error"
             },
-            "values": [["1590182853000000000", "Error", {}]]
+            "values": [["1590182853000000000", "a plaintext message", {}]]
         }
     ]
 }
@@ -124,7 +124,7 @@ Grafana Loki Structured Log Example
                     {
                         "float": "10.51",
                         "number": "10",
-                        "string value": "hello world",
+                        "string_value": "hello world",
                         "user": "null"
                     }
                 ]
