@@ -179,8 +179,8 @@ All variables:
 
 -   `LOKI_INGEST_URL` - The Loki ingest URL to send logs to.
 
-    -   Example with no authentication: `https://loki-instance.up.railway.app`
-    -   Example with username/password authentication: `https://user:pass@loki-instance.up.railway.app`
+    -   Example with no authentication: `https://loki-instance.up.railway.app/loki/api/v1/push`
+    -   Example with username/password authentication: `https://user:pass@loki-instance.up.railway.app/loki/api/v1/push`
     -   Optional.
 
 -   `INGEST_URL` - The URL to send a generic request to.
