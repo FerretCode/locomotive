@@ -45,6 +45,9 @@ func ReconstructLogLineLoki(log railway.EnvironmentLog) (jsonObject []byte, err 
 		"service_name":           log.Tags.ServiceName,
 		"deployment_id":          log.Tags.DeploymentID,
 		"deployment_instance_id": log.Tags.DeploymentInstanceID,
+		// railway already normalizes the level attribute into the severity field, or vice versa
+		"severity": log.Severity,
+		"level":    log.Severity,
 	}
 
 	for label, value := range labels {
@@ -70,24 +73,12 @@ func ReconstructLogLineLoki(log railway.EnvironmentLog) (jsonObject []byte, err 
 	// only use Railway timestamp
 	timeStamp := strconv.FormatInt(log.Timestamp.UnixNano(), 10)
 
-	// set severity in all situations for backwards compatibility
-	// railway already normilizes the level attribute into the severity field, or vice versa
-	jsonObject, err = jsonparser.Set(jsonObject, []byte(strconv.Quote(log.Severity)), "stream", "severity")
-	if err != nil {
-		return nil, fmt.Errorf("failed to append severity attribute to object: %w", err)
-	}
-
-	jsonObject, err = jsonparser.Set(jsonObject, []byte(strconv.Quote(log.Severity)), "stream", "level")
-	if err != nil {
-		return nil, fmt.Errorf("failed to append severity attribute to object: %w", err)
-	}
-
-	jsonObject, err = jsonparser.Set(jsonObject, []byte(util.QuoteIfNeeded(timeStamp)), "values", "[0]", "[0]")
+	jsonObject, err = jsonparser.Set(jsonObject, []byte(strconv.Quote(timeStamp)), "values", "[0]", "[0]")
 	if err != nil {
 		return nil, fmt.Errorf("failed to set timestamp in values slice: %w", err)
 	}
 
-	jsonObject, err = jsonparser.Set(jsonObject, []byte(util.QuoteIfNeeded(cleanMessage)), "values", "[0]", "[1]")
+	jsonObject, err = jsonparser.Set(jsonObject, []byte(strconv.Quote(cleanMessage)), "values", "[0]", "[1]")
 	if err != nil {
 		return nil, fmt.Errorf("failed to set message in values slice: %w", err)
 	}

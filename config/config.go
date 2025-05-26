@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v10"
+	"github.com/google/uuid"
 )
 
 type AdditionalHeaders map[string]string
@@ -82,6 +83,12 @@ func GetConfig() (*Config, error) {
 
 	if config.DiscordWebhookUrl == "" && config.IngestUrl == "" && config.SlackWebhookUrl == "" && config.LokiIngestUrl == "" {
 		return nil, errors.New("specify either a discord webhook url or an ingest url or a slack webhook url or a loki url")
+	}
+
+	for _, train := range config.Train {
+		if _, err := uuid.Parse(train); err != nil {
+			return nil, fmt.Errorf("invalid train: %s; must be a valid uuid", train)
+		}
 	}
 
 	return &config, nil
