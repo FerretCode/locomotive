@@ -53,7 +53,7 @@ func main() {
 	deployLogsProcessed := atomic.Int64{}
 	httpLogsProcessed := atomic.Int64{}
 
-	reportStatusAsync(ctx, cfg, &deployLogsProcessed, &httpLogsProcessed)
+	reportStatusAsync(cfg, &deployLogsProcessed, &httpLogsProcessed)
 
 	handleDeployLogsAsync(ctx, cfg, &deployLogsProcessed, serviceLogTrack)
 	handleHttpLogsAsync(ctx, cfg, &httpLogsProcessed, httpLogTrack)

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log/slog"
 	"runtime"
 	"sync/atomic"
@@ -12,7 +11,7 @@ import (
 	"github.com/ferretcode/locomotive/internal/util"
 )
 
-func reportStatusAsync(ctx context.Context, cfg *config.Config, deployLogsProcessed *atomic.Int64, httpLogsProcessed *atomic.Int64) {
+func reportStatusAsync(cfg *config.Config, deployLogsProcessed *atomic.Int64, httpLogsProcessed *atomic.Int64) {
 	go func() {
 		t := time.NewTicker(cfg.ReportStatusEvery)
 		defer t.Stop()
