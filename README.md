@@ -202,6 +202,13 @@ All variables:
     -   Format must be in the Golang time.DurationParse format
         -   E.g. 10h, 5h, 10m, 5m 5s
 
+-   `ENABLE_HTTP_LOGS` - Enable shipping HTTP logs.
+
+    -   Default: false.
+    -   If enabled, the locomotive will send logs to the HTTP endpoint specified in the `INGEST_URL` and `LOKI_INGEST_URL` environment variables.
+    -   Discord and Slack will not receive HTTP logs.
+    -   Optional.
+
 -   `LOGS_FILTER` - Global log filter.
 
     -   Either ALL, INFO, ERROR, WARN or any custom combination of severity / level.

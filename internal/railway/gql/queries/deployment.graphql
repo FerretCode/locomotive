@@ -1,0 +1,16 @@
+query deployment($id: String!) {
+  deployment(id: $id) {
+    service {
+      name
+      id
+      project {
+        name
+        id
+      }
+    }
+    environment {
+      name
+      id
+    }
+  }
+}

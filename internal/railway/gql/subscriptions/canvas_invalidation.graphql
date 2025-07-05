@@ -1,0 +1,5 @@
+subscription streamCanvasInvalidation($environmentId: String!) {
+	canvasInvalidation(environmentId: $environmentId) {
+		id
+	}
+}
