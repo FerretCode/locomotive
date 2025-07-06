@@ -11,6 +11,7 @@ Configuration is done through environment variables. See explanation and example
 **These are examples of what the body would look like in the POST request done by locomotive**
 <details>
 <summary>Deploy Logs</summary>
+
 <details>
 <summary>Plaintext Deploy Logs</summary>
 
