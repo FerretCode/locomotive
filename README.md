@@ -257,7 +257,7 @@ Grafana Loki Structured Deploy Logs Example
 
 -   Structured log attributes sent to Grafana Loki must always be a string
 
-- The root attributes in the HTTP logs are subject to change as Railway adds or removes information.
+- The root attributes in the HTTP logs are subject to change as Railway adds or removes information
 
 All variables:
 
