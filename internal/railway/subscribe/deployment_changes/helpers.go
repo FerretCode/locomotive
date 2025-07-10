@@ -6,8 +6,8 @@ import (
 	"github.com/ferretcode/locomotive/internal/railway/gql/queries"
 )
 
-func findSuccessfulDeploymentsIdsForWantedServiceIds(environment *queries.EnvironmentData, wantedServiceIds []string) []string {
-	successfulDeploymentsIdsForWantedServiceIds := []string{}
+func findSuccessfulDeploymentsIdsForWantedServiceIds(environment *queries.EnvironmentData, wantedServiceIds []string) []DeploymentIdWithInfo {
+	successfulDeploymentsIdsForWantedServiceIds := []DeploymentIdWithInfo{}
 
 	for _, deployment := range environment.Environment.Deployments.Edges {
 		// Only consider successful deployments
@@ -20,7 +20,10 @@ func findSuccessfulDeploymentsIdsForWantedServiceIds(environment *queries.Enviro
 			continue
 		}
 
-		successfulDeploymentsIdsForWantedServiceIds = append(successfulDeploymentsIdsForWantedServiceIds, deployment.Node.ID)
+		successfulDeploymentsIdsForWantedServiceIds = append(successfulDeploymentsIdsForWantedServiceIds, DeploymentIdWithInfo{
+			ID:        deployment.Node.ID,
+			CreatedAt: deployment.Node.CreatedAt,
+		})
 	}
 
 	return successfulDeploymentsIdsForWantedServiceIds

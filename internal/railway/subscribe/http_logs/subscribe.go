@@ -73,9 +73,11 @@ func resubscribeHttpLogsWithRetry(ctx context.Context, g *railway.GraphQLClient,
 }
 
 func SubscribeToHttpLogs(ctx context.Context, g *railway.GraphQLClient, logTrack chan<- []DeploymentHttpLogWithMetadata, environmentId string, serviceIds []string) error {
-	deploymentIdSlice := slice.NewSync[string]()
+	deploymentIdSlice := slice.NewSync[deployment_changes.DeploymentIdWithInfo]()
 	changeDetected := make(chan struct{})
 	errorChan := make(chan error, 1)
+
+	ctx = context.WithValue(ctx, funcInitTimeKey, time.Now())
 
 	go func() {
 		logger.Stdout.Debug("starting deployment ID changes subscription", slog.String("environment_id", environmentId), slog.Any("service_ids", serviceIds))
@@ -131,15 +133,15 @@ func SubscribeToHttpLogs(ctx context.Context, g *railway.GraphQLClient, logTrack
 		logger.Stdout.Debug("initial deployment IDs received", slog.Any("deployment_ids", deploymentIdSlice.Get()))
 
 		// Start goroutines for initial deployment IDs
-		for _, deploymentId := range deploymentIdSlice.Get() {
-			logger.Stdout.Debug("starting initial HTTP log goroutine for deployment", slog.String("deployment_id", deploymentId))
+		for _, deployment := range deploymentIdSlice.Get() {
+			logger.Stdout.Debug("starting initial HTTP log goroutine for deployment", slog.String("deployment_id", deployment.ID))
 
-			activeDeploymentIds.Append(deploymentId)
+			activeDeploymentIds.Append(deployment.ID)
 
 			go func() {
-				defer activeDeploymentIds.Delete(deploymentId)
+				defer activeDeploymentIds.Delete(deployment.ID)
 
-				if err := getHttpLogs(ctx, g, deploymentId, bufferedLogTrack, deploymentIdSlice); err != nil {
+				if err := getHttpLogs(ctx, g, deployment, bufferedLogTrack, deploymentIdSlice); err != nil {
 					errorChan <- err
 				}
 			}()
@@ -158,16 +160,16 @@ func SubscribeToHttpLogs(ctx context.Context, g *railway.GraphQLClient, logTrack
 			currentDeploymentIds := deploymentIdSlice.Get()
 
 			// Start new goroutines for deployment IDs that don't have active goroutines
-			for _, deploymentId := range currentDeploymentIds {
-				if !activeDeploymentIds.Contains(deploymentId) {
-					logger.Stdout.Debug("starting new goroutine for new deployment", slog.String("deployment_id", deploymentId))
+			for _, deployment := range currentDeploymentIds {
+				if !activeDeploymentIds.Contains(deployment.ID) {
+					logger.Stdout.Debug("starting new goroutine for new deployment", slog.String("deployment_id", deployment.ID))
 
-					activeDeploymentIds.Append(deploymentId)
+					activeDeploymentIds.Append(deployment.ID)
 
 					go func() {
-						defer activeDeploymentIds.Delete(deploymentId)
+						defer activeDeploymentIds.Delete(deployment.ID)
 
-						if err := getHttpLogs(ctx, g, deploymentId, bufferedLogTrack, deploymentIdSlice); err != nil {
+						if err := getHttpLogs(ctx, g, deployment, bufferedLogTrack, deploymentIdSlice); err != nil {
 							errorChan <- err
 						}
 					}()
@@ -177,21 +179,23 @@ func SubscribeToHttpLogs(ctx context.Context, g *railway.GraphQLClient, logTrack
 	}
 }
 
-func getHttpLogs(ctx context.Context, g *railway.GraphQLClient, initialDeploymentId string, logTrack chan<- []DeploymentHttpLogWithMetadata, activeDeploymentIds *slice.Sync[string]) error {
-	conn, err := createHttpLogSubscription(ctx, g, initialDeploymentId)
+func getHttpLogs(ctx context.Context, g *railway.GraphQLClient, initialDeployment deployment_changes.DeploymentIdWithInfo, logTrack chan<- []DeploymentHttpLogWithMetadata, activeDeployments *slice.Sync[deployment_changes.DeploymentIdWithInfo]) error {
+	conn, err := createHttpLogSubscription(ctx, g, initialDeployment.ID)
 	if err != nil {
-		return fmt.Errorf("failed to create subscription for deployment %s: %w", initialDeploymentId, err)
+		return fmt.Errorf("failed to create subscription for deployment %s: %w", initialDeployment.ID, err)
 	}
 
 	defer subscribe.SafeConnCloseNow(conn)
 
-	logTimes := time.Now()
+	initTime := ctx.Value(funcInitTimeKey).(time.Time)
 
-	logger.Stdout.Debug("successfully created HTTP log subscription", slog.String("deployment_id", initialDeploymentId))
+	logTimes := initialDeployment.CreatedAt
 
-	metadata, err := getMetadataForDeployment(ctx, g, initialDeploymentId)
+	logger.Stdout.Debug("successfully created HTTP log subscription", slog.String("deployment_id", initialDeployment.ID))
+
+	metadata, err := getMetadataForDeployment(ctx, g, initialDeployment.ID)
 	if err != nil {
-		return fmt.Errorf("error getting metadata for deployment %s: %w", initialDeploymentId, err)
+		return fmt.Errorf("error getting metadata for deployment %s: %w", initialDeployment.ID, err)
 	}
 
 	// Main loop for reading from this specific connection
@@ -201,9 +205,9 @@ func getHttpLogs(ctx context.Context, g *railway.GraphQLClient, initialDeploymen
 			return ctx.Err()
 		default:
 			// Check if this deployment ID is still wanted
-			if !activeDeploymentIds.Contains(initialDeploymentId) {
+			if !activeDeployments.Contains(initialDeployment) {
 				logger.Stdout.Debug("deployment id no longer wanted, exiting goroutine",
-					slog.String("deployment_id", initialDeploymentId),
+					slog.String("deployment_id", initialDeployment.ID),
 					slog.String("from", "getHttpLogs_deploymentIdCheck"),
 				)
 
@@ -217,9 +221,9 @@ func getHttpLogs(ctx context.Context, g *railway.GraphQLClient, initialDeploymen
 					continue
 				}
 
-				if !activeDeploymentIds.Contains(initialDeploymentId) {
+				if !activeDeployments.Contains(initialDeployment) {
 					logger.Stdout.Debug("deployment id no longer wanted, exiting goroutine",
-						slog.String("deployment_id", initialDeploymentId),
+						slog.String("deployment_id", initialDeployment.ID),
 						slog.String("from", "getHttpLogs_connRead"),
 					)
 
@@ -227,7 +231,7 @@ func getHttpLogs(ctx context.Context, g *railway.GraphQLClient, initialDeploymen
 				}
 
 				logger.Stdout.Debug("resubscribing",
-					slog.String("deployment_id", initialDeploymentId),
+					slog.String("deployment_id", initialDeployment.ID),
 					slog.String("from", "getHttpLogs_connRead"),
 					logger.ErrAttr(err),
 				)
@@ -235,9 +239,9 @@ func getHttpLogs(ctx context.Context, g *railway.GraphQLClient, initialDeploymen
 				// Close old connection and create new one
 				subscribe.SafeConnCloseNow(conn)
 
-				newConn, err := resubscribeHttpLogsWithRetry(ctx, g, initialDeploymentId, conn)
+				newConn, err := resubscribeHttpLogsWithRetry(ctx, g, initialDeployment.ID, conn)
 				if err != nil {
-					return fmt.Errorf("failed to resubscribe for deployment %s: %w", initialDeploymentId, err)
+					return fmt.Errorf("failed to resubscribe for deployment %s: %w", initialDeployment.ID, err)
 				}
 
 				conn = newConn
@@ -249,7 +253,7 @@ func getHttpLogs(ctx context.Context, g *railway.GraphQLClient, initialDeploymen
 
 			if err := json.Unmarshal(logPayload, &logs); err != nil {
 				logger.Stdout.Error("failed to unmarshal log payload",
-					slog.String("deployment_id", initialDeploymentId),
+					slog.String("deployment_id", initialDeployment.ID),
 					slog.String("from", "getHttpLogs_unmarshal"),
 					logger.ErrAttr(err),
 				)
@@ -259,7 +263,7 @@ func getHttpLogs(ctx context.Context, g *railway.GraphQLClient, initialDeploymen
 
 			if logs.Type != subscriptions.SubscriptionTypeNext {
 				logger.Stdout.Debug("unexpected log type, resubscribing",
-					slog.String("deployment_id", initialDeploymentId),
+					slog.String("deployment_id", initialDeployment.ID),
 					slog.String("type", string(logs.Type)),
 					slog.String("from", "getHttpLogs_typeCheck"),
 				)
@@ -267,10 +271,10 @@ func getHttpLogs(ctx context.Context, g *railway.GraphQLClient, initialDeploymen
 				// Close old connection and create new one
 				subscribe.SafeConnCloseNow(conn)
 
-				newConn, err := resubscribeHttpLogsWithRetry(ctx, g, initialDeploymentId, conn)
+				newConn, err := resubscribeHttpLogsWithRetry(ctx, g, initialDeployment.ID, conn)
 				if err != nil {
 					logger.Stdout.Error("failed to resubscribe",
-						slog.String("deployment_id", initialDeploymentId),
+						slog.String("deployment_id", initialDeployment.ID),
 						slog.String("from", "getHttpLogs_typeCheck"),
 						logger.ErrAttr(err),
 					)
@@ -293,7 +297,7 @@ func getHttpLogs(ctx context.Context, g *railway.GraphQLClient, initialDeploymen
 				logTimestamp, err := getTimeStampAttributeFromHttpLog(logs.Payload.Data.HTTPLogs[i])
 				if err != nil {
 					logger.Stdout.Error("failed to get timestamp from http log",
-						slog.String("deployment_id", initialDeploymentId),
+						slog.String("deployment_id", initialDeployment.ID),
 						slog.String("from", "getHttpLogs_payload_range"),
 						logger.ErrAttr(err),
 					)
@@ -303,14 +307,14 @@ func getHttpLogs(ctx context.Context, g *railway.GraphQLClient, initialDeploymen
 					return fmt.Errorf("failed to get timestamp from http log: %w", err)
 				}
 
-				if logTimestamp.Before(logTimes) || logTimes == logTimestamp {
+				if (logTimestamp.Before(logTimes) || logTimes == logTimestamp) || logTimestamp.Before(initTime) {
 					continue
 				}
 
 				path, err := getStringAttributeFromHttpLog(logs.Payload.Data.HTTPLogs[i], "path")
 				if err != nil {
 					logger.Stdout.Error("failed to get path from http log",
-						slog.String("deployment_id", initialDeploymentId),
+						slog.String("deployment_id", initialDeployment.ID),
 						slog.String("from", "getHttpLogs_payload_range"),
 						logger.ErrAttr(err),
 					)

@@ -15,7 +15,7 @@ import (
 	"github.com/ferretcode/locomotive/internal/slice"
 )
 
-func SubscribeToDeploymentIdChanges(ctx context.Context, g *railway.GraphQLClient, deploymentIdSlice *slice.Sync[string], changeDetected chan<- struct{}, environmentId string, serviceIds []string) error {
+func SubscribeToDeploymentIdChanges(ctx context.Context, g *railway.GraphQLClient, deploymentIdSlice *slice.Sync[DeploymentIdWithInfo], changeDetected chan<- struct{}, environmentId string, serviceIds []string) error {
 	environment := &queries.EnvironmentData{}
 
 	variables := map[string]any{

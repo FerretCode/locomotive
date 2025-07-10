@@ -161,9 +161,17 @@ func SubscribeToServiceLogs(ctx context.Context, g *railway.GraphQLClient, logTr
 			filteredLogs = append(filteredLogs, EnvironmentLogWithMetadata{
 				Log: logs.Payload.Data.EnvironmentLogs[i],
 				Metadata: EnvironmentLogMetadata{
-					ProjectName:     projectName,
+					ProjectName: projectName,
+					ProjectID:   logs.Payload.Data.EnvironmentLogs[i].Tags.ProjectID,
+
 					EnvironmentName: environmentName,
-					ServiceName:     serviceName,
+					EnvironmentID:   logs.Payload.Data.EnvironmentLogs[i].Tags.EnvironmentID,
+
+					ServiceName: serviceName,
+					ServiceID:   logs.Payload.Data.EnvironmentLogs[i].Tags.ServiceID,
+
+					DeploymentID:         logs.Payload.Data.EnvironmentLogs[i].Tags.DeploymentID,
+					DeploymentInstanceId: logs.Payload.Data.EnvironmentLogs[i].Tags.DeploymentInstanceID,
 				},
 			})
 		}
