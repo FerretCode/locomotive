@@ -1,0 +1,16 @@
+query environment($id: String!) {
+	environment(id: $id) {
+		projectId
+		deployments {
+      		edges {
+        		node {
+					id
+          			serviceId
+          			projectId
+          			createdAt
+          			status
+          		}
+        	}
+    	}
+	}
+}

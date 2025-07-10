@@ -6,11 +6,14 @@ A Railway sidecar service for sending webhook events when new logs are received.
 
 Configuration is done through environment variables. See explanation and examples below.
 
-## Generic Webhook Log Formats
+## Webhook Log Format Examples
 
 **These are examples of what the body would look like in the POST request done by locomotive**
+<details>
+<summary>Deploy Logs</summary>
 
-For Plaintext logs
+<details>
+<summary>Plaintext Deploy Logs</summary>
 
 ```json
 [
@@ -37,8 +40,12 @@ For Plaintext logs
     }
 ]
 ```
+</details>
 
-For Structured JSON logs
+<details>
+<summary>Structured JSON Deploy Logs</summary>
+
+For Structured JSON Deploy Logs
 
 ```json
 [
@@ -74,8 +81,12 @@ For Structured JSON logs
     }
 ]
 ```
+</details>
 
-Grafana Loki Plaintext Log Example
+<details>
+<summary>Grafana Loki Plaintext Deploy Logs Example</summary>
+
+Grafana Loki Plaintext Deploy Logs Example
 
 ```json
 {
@@ -98,8 +109,12 @@ Grafana Loki Plaintext Log Example
     ]
 }
 ```
+</details>
 
-Grafana Loki Structured Log Example
+<details>
+<summary>Grafana Loki Structured Deploy Logs Example</summary>
+
+Grafana Loki Structured Deploy Logs Example
 
 ```json
 {
@@ -133,10 +148,106 @@ Grafana Loki Structured Log Example
     ]
 }
 ```
+</details>
+</details>
+
+<details>
+<summary>HTTP Logs</summary>
+
+<details>
+<summary>HTTP Logs For Generic Webhooks</summary>
+
+```json
+[
+   {
+      "_metadata":{
+         "projectId":"bbd37ec6-1a5f-41bc-8461-910dffb30b1e",
+         "projectName":"Railway",
+         "environmentId":"681108cd-bbc6-49ac-a571-446cbbc2c6fe",
+         "environmentName":"production",
+         "serviceId":"f14f6e00-4d4e-448c-b526-79c358fc6ac0",
+         "serviceName":"Frontend Railpack",
+         "deploymentId":"ed5c3ddf-c333-4407-858d-58e6c5765066"
+      },
+      "clientUa":"Mozilla/5.0 (Macintosh; Intel Mac OS X 15_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Safari/605.1.15",
+      "downstreamProto":"HTTP/2.0",
+      "edgeRegion":"us-east4-eqdc4a",
+      "host":"railway.com",
+      "httpStatus":200,
+      "method":"GET",
+      "path":"/dashboard",
+      "requestId":"SMy7Drs-RcGXiaSg4a9AQ",
+      "responseDetails":"",
+      "rxBytes":4176,
+      "srcIp":"66.33.22.11",
+      "totalDuration":477,
+      "txBytes":22453,
+      "upstreamAddress":"http://[fd12:74d7:7e85:0:1000:34:be32:e1aa]:8080",
+      "upstreamProto":"HTTP/1.1",
+      "upstreamRqDuration":420,
+      "message":"/dashboard",
+      "timestamp":"2020-05-22T21:27:33Z",
+      "time":"2020-05-22T21:27:33Z",
+      "_time":"2020-05-22T21:27:33Z",
+      "ts":"2020-05-22T21:27:33Z",
+      "datetime":"2020-05-22T21:27:33Z",
+      "dt":"2020-05-22T21:27:33Z"
+   }
+]
+```
+
+</details>
+
+<details>
+<summary>HTTP Logs For Loki</summary>
+
+```json
+{
+   "streams":[
+      {
+         "stream":{
+            "project_name":"Railway",
+            "environment_id":"5cd7a403-45d9-4303-9de4-71bcfc7d2bf2",
+            "environment_name":"production",
+            "service_id":"3100de87-d044-4991-9c18-7a23e49c3927",
+            "service_name":"Frontend Railpack",
+            "deployment_id":"7d7426b1-0bd6-4b5e-8193-7f7a67160798",
+            "project_id":"8ab20430-761a-4d60-9b39-772a514d928a"
+         },
+         "values":[
+            [
+               "1590182853000000000",
+               "/dashboard",
+               {
+                  "clientUa":"Mozilla/5.0 (Macintosh; Intel Mac OS X 15_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Safari/605.1.15",
+                  "downstreamProto":"HTTP/2.0",
+                  "edgeRegion":"us-east4-eqdc4a",
+                  "host":"railway.com",
+                  "httpStatus":404,
+                  "method":"GET",
+                  "requestId":"SMy7Drs-RcGXiaSg4a9AQ",
+                  "responseDetails":"",
+                  "rxBytes":4302,
+                  "srcIp":"66.33.22.11",
+                  "totalDuration":242,
+                  "txBytes":19,
+                  "upstreamAddress":"http://[fd12:74d7:7e85:0:1000:34:be32:e1aa]:8080",
+                  "upstreamProto":"HTTP/1.1",
+                  "upstreamRqDuration":185
+               }
+            ]
+         ]
+      }
+   ]
+}
+```
+
+</details>
+</details>
 
 **Notes:**
 
--   Metadata is gathered once when the locomotive starts, If a project/service/environment name has changed, the name in the metadata will not be correct until the locomotive is restarted.
+-   Metadata is gathered approximately every 10 to 20 minutes. If a project/service/environment name has changed, the name in the metadata will not be correct until the locomotive refreshes its metadata.
 
 -   The body will always be a JSON array containing one or more log objects.
 
@@ -145,6 +256,8 @@ Grafana Loki Structured Log Example
 -   The default `Content-Type` for these POST requests is set to `application/json`
 
 -   Structured log attributes sent to Grafana Loki must always be a string
+
+- The root attributes in the HTTP logs are subject to change as Railway adds or removes information
 
 All variables:
 
@@ -201,6 +314,19 @@ All variables:
     -   Default: 5s.
     -   Format must be in the Golang time.DurationParse format
         -   E.g. 10h, 5h, 10m, 5m 5s
+
+-   `ENABLE_HTTP_LOGS` - Enable shipping HTTP logs.
+
+    -   Default: false.
+    -   If enabled, locomotive will send logs to the HTTP endpoint specified in the `INGEST_URL` and `LOKI_INGEST_URL` environment variables.
+    -   Discord and Slack will not receive HTTP logs.
+    -   Optional.
+
+-   `ENABLE_DEPLOY_LOGS` - Enable shipping deploy logs.
+
+    -   Default: true.
+    -   If enabled, locomotive will send logs to all the configured outputs.
+    -   Optional.
 
 -   `LOGS_FILTER` - Global log filter.
 
