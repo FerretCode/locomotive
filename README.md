@@ -2,6 +2,10 @@
 
 A Railway sidecar service for sending webhook events when new logs are received. Supports Discord, Datadog, Axiom, BetterStack and more!
 
+## ️⚠️ Deprecation Notice
+
+This version of locomotive has been deprecated in favor of Locomotive V2. You can find it [here](https://github.com/brody192/locomotive).
+
 ## Configuration
 
 Configuration is done through environment variables. See explanation and examples below.
